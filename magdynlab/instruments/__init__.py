@@ -9,6 +9,13 @@
 # Make documentation
 
 from .instruments_base import *
-from .srs_sr830 import *
+
+from .lakeshore_475 import *
+from .lakeshore_643 import *
+from .keithlet_195A import *
+from .keithley_2000 import *
+from .keithley_2400 import *
 from .kepco_bop import *
 from .kepco_bop_blind import *
+from .srs_ds335 import *
+from .srs_sr830 import *

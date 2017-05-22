@@ -4,4 +4,5 @@
 #MagDynLab
 
 
-__all__ = ['instruments', 'data_types']
+__all__ = ['instruments', 'data_types', 'controlers']
+

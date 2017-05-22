@@ -1,165 +1,151 @@
-# -*- coding: utf-8 -*-
+# coding=utf-8
 
-import visa
-import numpy
-import time
+# Author: Diego González Chávez
+# email : diegogch@cbpf.br / diego.gonzalez.chavez@gmail.com
+#
+# This class controls the:
+# Vector Network Analyzer
+# Rohde & Schwarz : VNA Z24
+#
+# TODO:
+# Clean code
+# Make documentation
+
+import time as _time
+import numpy as _np
+from .instruments_base import InstrumentBase as _InstrumentBase
+from .instruments_base import InstrumentChild as _InstrumentChild
+
+__all__ = ['RS_VNA_Z']
 
 
-#Author: Diego González Chávez
-#email : diegogch@cbpf.br / diego.gonzalez.chavez@gmail.com
+class RS_VNA_Z(_InstrumentBase):
+    def __init__(self,
+                 GPIB_Address=20, GPIB_Device=0,
+                 ResourceName=None, logFile=None):
+        if ResourceName is None:
+            ResourceName = 'GPIB%d::%d::INSTR' % (GPIB_Device, GPIB_Address)
+        super().__init__(ResourceName, logFile)
+        self._IDN = 'R&S VNA'
+        self.write('*CLS')
+        self.write('SYST:COMM:GPIB:RTER EOI')
+        self.VI.write_termination = None
+        self.VI.read_termination = self.VI.LF
+        self.write('FORM:DATA REAL, 64')
+        self.Ch1 = Channel(self, 1)
+        #  self.Ch2 = Channel(self, 2)
 
-#This classes controls the: 
-#Vector Network Analyzer
-#Rohde & Schwarz : VNA Z24
 
-#Make documentation
-#TODO:
-
-
-class Channel(object):
-    def __init__(self, parent, ChanNum = 1, ID = 'Auto'):
-        self.parent = parent
-        self.write = parent.write
-        self.ask = parent.ask
-        self.askValues = parent.askValues
-
-        self._Number = ChanNum
+class Channel(_InstrumentChild):
+    def __init__(self, parent, ChanNum=1, ID='Auto'):
+        super().__init__(parent)
+        self._number = ChanNum
         if ID == 'Auto':
-            self.ID = 'Ch%d' % self.Number
+            self.ID = 'Ch%d' % self.number
         else:
             self.ID = ID
-        self.write('CONF:CHAN%d:STAT ON' % self.Number)
+        self.write('CONF:CHAN%d:STAT ON' % self.number)
 
-    def __getNumber(self):
-        return self._Number
-    Number = property(__getNumber, None, None, )
-        
-    def __getTraces(self):
-        TrcNames = (self.ask('CONF:TRAC:CAT?').strip('\'')).split(',')[1::2]
+    @property
+    def number(self):
+        return self._number
+
+    @property
+    def traces(self):
+        TrcNames = (self.query('CONF:TRAC:CAT?').strip('\'')).split(',')[1::2]
         vTraces = []
         for trN in TrcNames:
             tr = Trace(self, trN)
-            if tr.ChannelNumber == self.Number:
+            if tr.channel_number == self.number:
                 vTraces.append(tr)
         return vTraces
-    Traces = property(__getTraces, None, None, )
-    
-    def __getBandwidth(self):
-        BW = self.ask('SENS%(Ch)d:BWID?' %{'Ch':self.Number})
-        return numpy.float(BW)
-    def __setBandwidth(self, newBW):
-        self.write('SENS%(Ch)d:BWID %{BW}0.9E' %{'Ch':self.Number, 'BW':newBW})
-    Bandwidth = property(__getBandwidth, __setBandwidth, None, )
-    
-    def SetSweep(self, start, stop, np, na = 50):
-        self.write('SENS%(Ch)d:FREQ:STAR %(f)0.9E' %{'Ch':self.Number, 'f':start})
-        self.write('SENS%(Ch)d:FREQ:STOP %(f)0.9E' %{'Ch':self.Number, 'f':stop})
-        self.write('SENS%(Ch)d:SWE:POIN %(n)d' %{'Ch':self.Number, 'n':np})
 
-        self.write('SENS%(Ch)d:AVER:COUN %(n)d' %{'Ch' : self.Number, 'n' : na})
+    @property
+    def bandwidth(self):
+        return self.query_float('SENS%(Ch)d:BWID?' % {'Ch': self.Number})
+
+    @bandwidth.setter
+    def bandwidth(self, newBW):
+        self.write('SENS%(Ch)d:BWID %(BW)0.9E' %
+                   {'Ch': self.Number, 'BW': newBW})
+
+    def SetSweep(self, start, stop, np, na=50):
+        self.write('SENS%(Ch)d:FREQ:STAR %(f)0.9E' %
+                   {'Ch': self.number, 'f': start})
+        self.write('SENS%(Ch)d:FREQ:STOP %(f)0.9E' %
+                   {'Ch': self.number, 'f': stop})
+        self.write('SENS%(Ch)d:SWE:POIN %(n)d' %
+                   {'Ch': self.number, 'n': np})
+        self.write('SENS%(Ch)d:AVER:COUN %(n)d' %
+                   {'Ch': self.number, 'n': na})
         if na > 1:
-            self.write('SENS%(Ch)d:AVER:STAT ON' %{'Ch' : self.Number})
+            self.write('SENS%(Ch)d:AVER:STAT ON' % {'Ch': self.number})
         else:
-            self.write('SENS%(Ch)d:AVER:STAT OFF' %{'Ch' : self.Number})
+            self.write('SENS%(Ch)d:AVER:STAT OFF' % {'Ch': self.number})
+
     def getSTIM(self):
-        return self.askValues('CALC%(Ch)d:DATA:STIM?' %{'Ch' : self.Number})
+        return self.query_values('CALC%(Ch)d:DATA:STIM?' % {'Ch': self.number})
+
     def INIT(self):
         while True:
-            self.write('INIT%(Ch)d:IMM' %{'Ch' : self.Number})
-            if self.ask('SYST:ERR:ALL?') == '0,"No error"':
+            self.write('INIT%(Ch)d:IMM' % {'Ch': self.Number})
+            if self.query('SYST:ERR:ALL?') == '0,"No error"':
                 break
 
-class Trace(object):
-    def __init__(self, parent, Name = 'Auto'):
-        self.parent = parent
-        self.write = parent.write
-        self.ask = parent.ask
-        self.askValues = parent.askValues
-        self.Name = Name
-        self.__ChanNumber = int(self.ask('CONF:TRAC:CHAN:NAME:ID? \'' + self.Name + '\''))
-        
+
+class Trace(_InstrumentChild):
+    def __init__(self, parent, Name='Auto'):
+        super().__init__(parent)
+        self.name = Name
+        self._ChNumber = self.query_int('CONF:TRAC:CHAN:NAME:ID? \'%s\''
+                                        % Name)
+
     @property
-    def ChannelNumber(self):
-        #Channel Number
-        return self.__ChanNumber
-        
-    def getNewData(self, timeout = 0):
-        ChN = self.ChannelNumber
+    def channel_number(self):
+        '''Channel Number'''
+        return self._ChNumber
+
+    def getNewData(self):
+        ChN = self.channel_number
         self.write('INIT:CONT OFF')
-        averStat = self.ask('SENS%(Ch)d:AVER:STAT?' %{'Ch':ChN})
+        averStat = self.query('SENS%(Ch)d:AVER:STAT?' % {'Ch': ChN})
         if averStat == '1':
-            averCount = int(self.ask('SENS%(Ch)d:AVER:COUN?' %{'Ch':ChN}))
-            self.write('SENS%(Ch)d:AVER:CLE' %{'Ch':ChN})
+            averCount = self.query_int('SENS%(Ch)d:AVER:COUN?' % {'Ch': ChN})
+            self.write('SENS%(Ch)d:AVER:CLE' % {'Ch': ChN})
         else:
             averCount = 1
-        
         for i in range(averCount):
             self.parent.INIT()
-            while self.ask('CALC%(Ch)d:DATA:NSW:COUN?' %{'Ch':ChN}) == '0':
-                time.sleep(0.01)
-    def getFDAT(self, New = False):
-        
-        #Return formatted trace data, according to the selected trace format
-        
-        ChN = self.ChannelNumber
-        self.write('CALC%(Ch)d:PAR:SEL \'' %{'Ch':ChN} + self.Name + '\'')
+            while self.query('CALC%(Ch)d:DATA:NSW:COUN?' % {'Ch': ChN}) == '0':
+                _time.sleep(0.01)
+
+    def getFDAT(self, New=False):
+        '''
+        Return formatted trace data,
+        accordingly to the selected trace format
+        '''
+        ChN = self.channel_number
+        self.write('CALC%(Ch)d:PAR:SEL \'%(N)s\'' %
+                   {'Ch': ChN, 'N': self.name})
         if New:
             self.getNewData()
-        return self.askValues('CALC%(Ch)d:DATA? FDAT' %{'Ch':ChN})
-    def getSDAT(self, New = False):
-        
-        #Returns unformatted trace data: Real and imaginary part of each measurement point
-        #For wave quantities the unit is Volts
-        
-        ChN = self.ChannelNumber
-        self.write('CALC%(Ch)d:PAR:SEL \'' %{'Ch':ChN} + self.Name + '\'')
+        return self.query_values('CALC%(Ch)d:DATA? FDAT' % {'Ch': ChN})
+
+    def getSDAT(self, New=False):
+        '''
+        Returns unformatted trace data :
+        Real and imaginary part of each measurement point
+        For wave quantities the unit is Volts
+        '''
+        ChN = self.channel_number
+        self.write('CALC%(Ch)d:PAR:SEL \'%(N)s\'' %
+                   {'Ch': ChN, 'N': self.name})
         if New:
             self.getNewData()
-        SDAT = self.askValues('CALC%(Ch)d:DATA? SDAT' %{'Ch':ChN})
+        SDAT = self.query_values('CALC%(Ch)d:DATA? SDAT' % {'Ch': ChN})
         return SDAT[::2] + 1.0j*SDAT[1::2]
-    def SaveSData(self, fileName, New = False):
+
+    def SaveSData(self, fileName, New=False):
         f = self.parent.getSTIM()
         S = self.getSDAT(New)
-        numpy.savetxt(fileName, numpy.array([f, S.real, S.imag]).transpose(), fmt = '%.16E')
-
-class Diagram(object):
-    def __init__(self, parent, Name = 'Auto'):
-        self.parent = parent
-        self.VI = parent.VI
-        self.Traces = []
-
-class VectorNetworkAnalyser(object):
-    def __init__(self, GPIB_Address = 20, GPIB_Device = 0, ResourceName = None):
-        if ResourceName is None:
-            ResourceName = 'GPIB%d::%d::INSTR' %(GPIB_Device, GPIB_Address)
-        self.VI = visa.ResourceManager().open_resource(ResourceName)
-        self.VI.write('*CLS')
-        self.VI.write('SYST:COMM:GPIB:RTER EOI')
-        self.VI.write_termination = None
-        self.VI.read_termination = self.VI.LF
-        #self.VI.write('*RST')
-        self.write('FORM:DATA REAL, 64')
-        self.Ch1 = Channel(self, 1)
-        #self.Ch2 = Channel(self, 2)
-    def __del__(self):
-        self.VI.close()
-    def checkSTB(self):
-        c0 = time.clock()
-        while numpy.binary_repr(self.VI.stb)[-1] == 0:
-            if time.clock() - c0 >= 1:
-                print("Device not ready")
-                raise
-    def write(self, command):
-        self.checkSTB()
-        self.VI.write(command)
-    def ask(self, command):
-        self.checkSTB()
-        #return self.VI.ask(command)
-        return self.VI.query(command)
-    def askValues(self, command):
-        self.checkSTB()
-        #return numpy.array(self.VI.ask_for_values(command, visa.double))
-        self.VI.read_termination = None
-        data =  numpy.array(self.VI.query_binary_values(command, datatype='d'))
-        self.VI.read_termination = self.VI.LF
-        return data
+        _np.savetxt(fileName, _np.array([f, S.real, S.imag]).T, fmt='%.16E')

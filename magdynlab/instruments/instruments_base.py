@@ -1,0 +1,69 @@
+# coding=utf-8
+
+# Author: Diego Gonzalez Chavez
+# email : diegogch@cbpf.br / diego.gonzalez.chavez@gmail.com
+#
+# magdynlab
+# Base class for all instruments
+#
+# TODO:
+# Make documentation
+
+import visa
+import datetime
+import os
+
+__all__ = ['InstrumentBase']
+
+
+class InstrumentBase(object):
+    '''
+    Base class for all instrument classes in magdynlab
+    '''
+
+    def __init__(self, ResourceName, logFile=None):
+        self.VI = visa.ResourceManager().open_resource(ResourceName)
+        self._IDN = self.VI.resource_name
+        if logFile is None:
+            self._logFile = logFile
+        else:
+            if not os.path.isfile(logFile):
+                with open(logFile, 'w') as log:
+                    log.write('MagDynLab Instruments LogFile\n')
+            self._logFile = os.path.abspath(logFile)
+        self._logWrite('OPEN_', '')
+
+    def __del__(self):
+        self._logWrite('CLOSE', '')
+        self.VI.close()
+
+    def __str__(self):
+        return "%s : %s" % ('magdynlab.instrument', self._IDN)
+
+    def _logWrite(self, action, value):
+        if self._logFile is not None:
+            with open(self._logFile, 'a') as log:
+                timestamp = datetime.datetime.utcnow()
+                log.write('%s %s %s : %s \n' %
+                          (timestamp, self._IDN, action, repr(value)))
+    _log = _logWrite
+
+    def write(self, command):
+        self._logWrite('write', command)
+        self.VI.write(command)
+
+    def query(self, command):
+        self._logWrite('query', command)
+        returnQ = self.VI.query(command)
+        self._logWrite('resp ', returnQ)
+        return returnQ
+
+    def query_type(self, command, type_caster):
+        returnQ = self.query(command)
+        return type_caster(returnQ)
+
+    def query_int(self, command):
+        return self.query_type(command, int)
+
+    def query_float(self, command):
+        return self.query_type(command, float)

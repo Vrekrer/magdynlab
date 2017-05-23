@@ -1,6 +1,6 @@
 # coding=utf-8
 
-# Author: Diego Gonz·lez Ch·vez
+# Author: Diego Gonz√°lez Ch√°vez
 # email : diegogch@cbpf.br / diego.gonzalez.chavez@gmail.com
 #
 # This class controls the:

@@ -1,6 +1,6 @@
 # magdynlab
 
-This software is developed for the automatization and control of the experiments of the Magnetization Dynamics Laboratory at the Brazilian Center for Physics Research (CBPF), Rio de Janeiro, Brazil.
+This software is developed for the automation and control of the experiments of the Magnetization Dynamics Laboratory at the Brazilian Center for Physics Research (CBPF), Rio de Janeiro, Brazil.
 
 The main purpose of this software is to be easy to use.
 Anyone with a minimal python programing skill should be able to easly create new experiment routines.

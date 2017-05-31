@@ -23,7 +23,11 @@ class InstrumentBase(object):
     '''
 
     def __init__(self, ResourceName, logFile=None):
-        self.VI = visa.ResourceManager().open_resource(ResourceName)
+        if os.name == 'nt':
+            rm = visa.ResourceManager()
+        else:
+            rm = visa.ResourceManager('@py')
+        self.VI = rm.open_resource(ResourceName)
         self._IDN = self.VI.resource_name
         if logFile is None:
             self._logFile = logFile
@@ -113,5 +117,3 @@ class InstrumentChild(object):
 
     def __str__(self):
         return "%s : %s" % ('magdynlab.instrument', self._IDN)
-
-

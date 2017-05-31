@@ -32,16 +32,16 @@ class InstrumentBase(object):
                 with open(logFile, 'w') as log:
                     log.write('MagDynLab Instruments LogFile\n')
             self._logFile = os.path.abspath(logFile)
-        self._logWrite('OPEN_', '')
+        self._logWrite('OPEN_')
 
     def __del__(self):
-        self._logWrite('CLOSE', '')
+        self._logWrite('CLOSE')
         self.VI.close()
 
     def __str__(self):
         return "%s : %s" % ('magdynlab.instrument', self._IDN)
 
-    def _logWrite(self, action, value):
+    def _logWrite(self, action, value=''):
         if self._logFile is not None:
             with open(self._logFile, 'a') as log:
                 timestamp = datetime.datetime.utcnow()
@@ -52,6 +52,12 @@ class InstrumentBase(object):
     def write(self, command):
         self._logWrite('write', command)
         self.VI.write(command)
+
+    def read(self):
+        self._logWrite('read ')
+        returnR = self.VI.read()
+        self._logWrite('resp ', returnR)
+        return returnQ
 
     def query(self, command):
         self._logWrite('query', command)

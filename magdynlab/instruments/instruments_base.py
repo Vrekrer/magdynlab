@@ -57,7 +57,7 @@ class InstrumentBase(object):
         self._logWrite('read ')
         returnR = self.VI.read()
         self._logWrite('resp ', returnR)
-        return returnQ
+        return returnR
 
     def query(self, command):
         self._logWrite('query', command)

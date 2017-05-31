@@ -84,7 +84,7 @@ This software uses three layers of abstraction to simplifiy the creation of expe
 ## 3.- Experiments
 > This layer is used to implement experiment routines
 
-> For example, to use measure a magentization curve in a VSM the following code can be used:
+> For example, to measure a magentization curve in a VSM the following code can be used:
 
 > ```python
 > import numpy

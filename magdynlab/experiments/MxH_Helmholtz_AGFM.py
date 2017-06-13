@@ -74,8 +74,7 @@ class MxH(object):
 
     def PlotFreq(self):
         FreqPlot(self.DataFreq)
-      
-        
+
     @ThD.as_thread
     def FreqCurve(self, crvf = [], file_name = None, TurnOff = False):
         freqs = numpy.asarray(crvf)
@@ -103,7 +102,7 @@ class MxH(object):
         if TurnOff:
             self.FC.TurnOff()
         self.FC.Kepco.BEEP()
-        
+
     @ThD.as_thread
     def Measure(self, crv = [], file_name = None, meas_opts = [10, 1, 0.1]):
         fields = numpy.asarray(crv)

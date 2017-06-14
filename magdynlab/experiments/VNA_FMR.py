@@ -8,8 +8,6 @@ import magdynlab.data_types
 import threading_decorators as ThD
 import matplotlib.pyplot as plt
 
-from magdynlab.data_types.Data3DC import Data3DC, Data3D
-
 @ThD.gui_safe
 def MyPlot(Data):
     f = plt.figure('VNA-FMR', (5,4))
@@ -33,36 +31,29 @@ def MyPlot(Data):
     f.tight_layout()
     f.canvas.draw()
 
-class VNAM(object):
-    def __init__(self, GPIB_Device = 0, OnePort = False):
-        self.VNAC = MagDynLab.Controlers.VNAControler(ResourceName = 'TCPIP::192.168.0.2::INSTR')
+
+class VNA_FMR(object):
+    def __init__(self, GPIB_Device = 0):
+        PowerSource = magdynlab.instruments.KEPCO_BOP(GPIB_Device=0,
+                                                      GPIB_Address=6)
+        VNA = magdynlab.instruments.RS_VNA_Z(ResourceName='TCPIP::192.168.0.2::INSTR')
+
         self.FC = MagDynLab.Controlers.FieldControler_Driven(GPIB_Device = GPIB_Device)
         self.FC.Kepco.Voltage = 15
 
-        self.onePort = OnePort
-        #We store the raw S parameters in this Collection
+        # We store the raw S parameters in this Collection
         self.DataCollection = []
         for i in range(4):
-            D = Data3DC()
+            D = magdynlab.data_types.Data3D()
             self.DataCollection.append(D)
 
-
-        #This is used to plot
-        self.DataPlot = Data3D()
+        # This is used to plot
+        self.DataPlot = magdynlab.data_types.Data3D()
         
+        self.traceNumbers = [0,1,2,3]
+
         self.SaveFormat = 'txt'
         self.Info = ''
-
-    @property
-    def onePort(self):
-        return self._onePort
-    @onePort.setter
-    def onePort(self, vBool):
-        self._onePort = bool(vBool)
-        if self._onePort:
-            self.traceNumbers = [0]
-        else:
-            self.traceNumbers = [0,1,2,3]
 
     def _MeasureSpectra(self):
         Ss = []

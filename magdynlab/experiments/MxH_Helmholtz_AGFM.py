@@ -97,7 +97,7 @@ class MxH(object):
             FreqPlot(self.DataFreq)
             ThD.check_stop()
             
-        if file_name != None:
+        if file_name is not None:
             self._SaveData(file_name)
         if TurnOff:
             self.FC.TurnOff()
@@ -107,7 +107,7 @@ class MxH(object):
     def Measure(self, crv = [], file_name = None, meas_opts = [10, 1, 0.1]):
         fields = numpy.asarray(crv)
         
-        #Initialize data objects
+        # Initialize data objects
         self.Data.reset()
         self.Data.xlim = [fields.min(), fields.max()]
         sen = self.VC.LockIn.SEN * 1.5 * self.VC.emu_per_V
@@ -115,7 +115,7 @@ class MxH(object):
         
         n_pts, iniDelay, measDelay = meas_opts
         
-        #Loop for each field
+        # Loop for each field
         for i, h in enumerate(fields):
             self.FC.setField(h)
             while abs(h - self.FC.getField()) > 50:

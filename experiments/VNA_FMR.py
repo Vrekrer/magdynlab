@@ -115,7 +115,7 @@ class VNA_FMR(object):
 
         # Initialize data objects
         for D in self.DataCollection:
-            D.initialize(fields, freqs)
+            D.initialize(fields, freqs, dtype='Complex')
         self.DataPlot.initialize(fields, freqs)
 
         # Loop for each field

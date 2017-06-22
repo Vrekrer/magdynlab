@@ -9,4 +9,5 @@
 # Make documentation
 
 from .data2D import *
+from .data3D import *
 

@@ -1,6 +1,6 @@
 # coding=utf-8
 
-# Author: Diego Gonz·lez Ch·vez
+# Author: Diego Gonz√°lez Ch√°vez
 # email : diegogch@cbpf.br / diego.gonzalez.chavez@gmail.com
 #
 # This class controls the:
@@ -26,10 +26,8 @@ class KEITHLEY_2000(_InstrumentBase):
         self.VI.write_termination = self.VI.LF
         self.VI.read_termination = self.VI.LF
 
-        time.sleep(0.5)
         self.write('*CLS')
         self.write('*RST')
-        time.sleep(0.5)
         self.write('FUNC "VOLT:DC"')
         self.write('VOLT:DC:RANG:UPP 1')
         self.write('VOLT:DC:AVER:TCON MOV')

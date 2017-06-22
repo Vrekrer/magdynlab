@@ -52,7 +52,11 @@ class Channel(_InstrumentChild):
 
     @property
     def traces(self):
-        TrcNames = (self.query('CONF:TRAC:CAT?').strip('\'')).split(',')[1::2]
+        # TODO: Fix this ugly hack
+        self.VI.read_termination = None
+        RawTrcNames = self.query('CONF:TRAC:CAT?')
+        self.VI.read_termination = '\n'
+        TrcNames = RawTrcNames.strip('\n').strip('\'').split(',')[1::2]
         vTraces = []
         for trN in TrcNames:
             tr = Trace(self, trN)

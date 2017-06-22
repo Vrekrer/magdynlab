@@ -30,10 +30,15 @@ class RS_VNA_Z(_InstrumentBase):
         self.write('*CLS')
         self.write('SYST:COMM:GPIB:RTER EOI')
         self.VI.write_termination = None
-        self.VI.read_termination = self.VI.LF
+        self.VI.read_termination = None
         self.write('FORM:DATA REAL, 64')
         self.Ch1 = Channel(self, 1)
         #  self.Ch2 = Channel(self, 2)
+
+    def query(self, command):
+        # Remove \n terminations by software
+        returnQ = super().query(command)
+        return returnQ.strip('\n')
 
 
 class Channel(_InstrumentChild):
@@ -52,11 +57,7 @@ class Channel(_InstrumentChild):
 
     @property
     def traces(self):
-        # TODO: Fix this ugly hack
-        self.VI.read_termination = None
-        RawTrcNames = self.query('CONF:TRAC:CAT?')
-        self.VI.read_termination = '\n'
-        TrcNames = RawTrcNames.strip('\n').strip('\'').split(',')[1::2]
+        TrcNames = self.query('CONF:TRAC:CAT?').strip('\'').split(',')[1::2]
         vTraces = []
         for trN in TrcNames:
             tr = Trace(self, trN)

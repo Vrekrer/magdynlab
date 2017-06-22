@@ -81,15 +81,12 @@ class VNA_FMR(object):
         self.Refs = numpy.array(self._MeasureSpectra())
         numpy.savez_compressed(file_name + '.VNA_Ref',
                                Ref=self.Refs,
-                               f=self.VNAC.Frequencies,
+                               f=self.VNAC.frequencies,
                                Info=self.Info)
 
     def PlotData(self, i=None):
         RefS11 = self.Refs[0]
-        if not self.onePort:
-            RefS12 = self.Refs[2]
-        else:
-            RefS12 = 0
+        RefS12 = self.Refs[2]
 
         Pr = 1 - numpy.abs(RefS11)**2 - numpy.abs(RefS12)**2
 
@@ -111,11 +108,11 @@ class VNA_FMR(object):
     @ThD.as_thread
     def Measure(self, crv, file_name):
         fields = crv
-        freqs = self.VNAC.Frequencies
+        freqs = self.VNAC.frequencies
 
         # Initialize data objects
         for D in self.DataCollection:
-            D.initialize(fields, freqs, dtype='Complex')
+            D.initialize(fields, freqs, dtype=complex)
         self.DataPlot.initialize(fields, freqs)
 
         # Loop for each field

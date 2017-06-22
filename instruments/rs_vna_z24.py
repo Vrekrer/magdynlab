@@ -93,7 +93,7 @@ class Channel(_InstrumentChild):
 
     def INIT(self):
         while True:
-            self.write('INIT%(Ch)d:IMM' % {'Ch': self.Number})
+            self.write('INIT%(Ch)d:IMM' % {'Ch': self.number})
             if self.query('SYST:ERR:ALL?') == '0,"No error"':
                 break
 

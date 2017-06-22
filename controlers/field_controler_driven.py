@@ -58,7 +58,7 @@ class FieldControlerDriven(object):
             'A/m' : Field in A/m
         '''
         time.sleep(delay)
-        vIn = self.VoltMeter.Voltage
+        vIn = self.VoltMeter.voltage
 
         if Unit == 'Oe':
             return self.InToH * vIn

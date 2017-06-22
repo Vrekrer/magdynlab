@@ -20,7 +20,7 @@ class VNA_Controler(object):
         self.VNA = VNA_instrument
 
     def getSData(self, TrN, new=True):
-        X = self.VNA.Ch1.Traces[TrN].getSDAT(new)
+        X = self.VNA.Ch1.traces[TrN].getSDAT(new)
         return X.copy()
 
     @property

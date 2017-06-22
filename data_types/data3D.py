@@ -18,13 +18,13 @@ class Data3D(object):
     Data container for Z(x,y) data type.
     where Z is a real or complex number
     Z.shape = ( len(y), len(x))
-    
+
     Each column of the array corresponds to a given x value
     Z[:,nx] = Z(y) values with x = x[nx]
-    
+
     Each row of the array corresponds to a given y value
     Z[ny] = Z(y) values with y = y[ny]
-    
+
     Saved files keeps the same column row structure
     '''
 
@@ -59,6 +59,6 @@ class Data3D(object):
 
     def addColumn(self, DataC):
         self._Nx = self._Nx + 1
-        self.dataArray[:,self._Nx] = DataC
+        self.dataArray[:, self._Nx] = DataC
 
     # TODO implement saves

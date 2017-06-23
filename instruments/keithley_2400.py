@@ -44,7 +44,7 @@ class KEITHLEY_2400(_InstrumentBase):
          4, '4W', 'Remote', '4-Wires'
          2, '2W', 'Local', '2-Wires'
         '''
-        val = self.ask('SYST:RSEN?')
+        val = self.query('SYST:RSEN?')
         return {'0': '2-Wires', '1': '4-Wires'}[val]
 
     @sense_mode.setter
@@ -104,7 +104,7 @@ class KEITHLEY_2400(_InstrumentBase):
 
     @source_value.setter
     def source_value(self, val):
-        funct = self.SourceFunction
+        funct = self.source_function
         if funct == 'Voltage':
             vMax = self.SourceVoltageLimit
             unit = 'V'

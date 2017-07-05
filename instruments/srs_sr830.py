@@ -226,3 +226,19 @@ class SRS_SR830(_InstrumentBase):
     @property
     def Freq(self):
         return self.query_float('FREQ?')
+
+    @property
+    def AUX_In_1(self):
+        return self.query_float('OAUX?1')
+
+    @property
+    def AUX_In_2(self):
+        return self.query_float('OAUX?2')
+
+    @property
+    def AUX_In_3(self):
+        return self.query_float('OAUX?3')
+
+    @property
+    def AUX_In_4(self):
+        return self.query_float('OAUX?4')

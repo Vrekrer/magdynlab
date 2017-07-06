@@ -67,7 +67,7 @@ class MxH(object):
                 self.LockIn = LockIn
             @property
             def voltage(self):
-                return self.LockIn.AUX_In_1
+                return self.LockIn.AUX_In_3
 
         Voltmeter = virtual_voltmeter(LockIn)
 

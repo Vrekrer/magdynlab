@@ -73,7 +73,7 @@ class MxH(object):
 
         self.VC = magdynlab.controlers.LockIn_Mag_Controler(LockIn)
         self.FC = magdynlab.controlers.FieldControlerDriven(PowerSource, Voltmeter)
-        self.FC.voltage = 50
+        self.FC.Kepco.voltage = 50
 
         #This is used to plot
         self.Data = magdynlab.data_types.Data2D()

@@ -111,7 +111,7 @@ class MxH(object):
             ThD.check_stop()
             
         if file_name is not None:
-            self._SaveData(file_name)
+            self.DataFreq.save(file_name)
         if TurnOff:
             self.FC.TurnOff()
         self.FC.Kepco.BEEP()
@@ -140,7 +140,7 @@ class MxH(object):
             ThD.check_stop()
             
         if file_name != None:
-            self._SaveData(file_name)
+            self.Data.save(file_name)
         self.FC.TurnOff()
         self.FC.Kepco.BEEP()
 

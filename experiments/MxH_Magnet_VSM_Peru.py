@@ -56,22 +56,22 @@ def FreqPlot(Data):
     
 class MxH(object):
     def __init__(self):
-		dir_Kepco = 'TCPIP0::192.168.1.8::5025::SOCKET'
-		dir_LockIn = 'TCPIP0::192.168.1.4::1234::SOCKET'
-		
+        dir_Kepco = 'TCPIP0::192.168.1.8::5025::SOCKET'
+        dir_LockIn = 'TCPIP0::192.168.1.4::1234::SOCKET'
+
         PowerSource = magdynlab.instruments.KEPCO_BOP(ResourceName = dir_Kepco)
         LockIn = magdynlab.instruments.SRS_SR830(ResourceName = dir_LockIn)
-		
-		class virtual_voltmeter(object):
-			def __init__(self, LockIn):
-				self.LockIn = LockIn
-			@property
-			def voltage(self):
-				return self.LockIn.AUX_In_1
-		
-		Voltmeter = virtual_voltmeter(LockIn)
 
-		self.VC = magdynlab.controlers.LockIn_Mag_Controler(LockIn)
+        class virtual_voltmeter(object):
+            def __init__(self, LockIn):
+                self.LockIn = LockIn
+            @property
+            def voltage(self):
+                return self.LockIn.AUX_In_1
+
+        Voltmeter = virtual_voltmeter(LockIn)
+
+        self.VC = magdynlab.controlers.LockIn_Mag_Controler(LockIn)
         self.FC = magdynlab.controlers.FieldControlerDriven(PowerSource, Voltmeter)
         self.FC.voltage = 50
 

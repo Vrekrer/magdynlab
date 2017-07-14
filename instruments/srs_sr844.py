@@ -107,7 +107,7 @@ class SRS_SR844(_InstrumentBase):
         vSen = [100E-9, 300E-9,
                 1E-6, 3E-6, 10E-6, 30E-6, 100E-6, 300E-6,
                 1E-3, 3E-3, 10E-3, 30E-3, 100E-3, 300E-3,
-                1]
+                1][sen_i]
         return vSen
         
     @SEN.setter

@@ -22,3 +22,4 @@ from .srs_sr830 import *
 from .srs_sr844 import *
 from .rs_vna_z24 import *
 from .agilent_e3648a import *
+from .agilent_4285A import *

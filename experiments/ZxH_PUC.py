@@ -104,7 +104,7 @@ class ZxH(object):
             f, X, Y = self.VC.getFXY(n = n_pts, iniDelay = iniDelay, measDelay = measDelay)
             self.Data.addPoint(h, X, Y, f)
             MyPlot(self.Data)
-            QTh.check_stop()
+            ThD.check_stop()
             
         if file_name != None:
             self._SaveData(file_name)

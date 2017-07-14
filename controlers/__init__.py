@@ -15,3 +15,4 @@ from .lockin_mag_controler import *
 from .vna_controler import *
 from .resistance_controler import *
 from .z_controler_puc import *
+from .lcr_controler_puc import *

@@ -10,6 +10,7 @@
 
 from .field_controler import *
 from .field_controler_driven import *
+from .field_controler_puc import *
 from .lockin_mag_controler import *
 from .vna_controler import *
 from .resistance_controler import *

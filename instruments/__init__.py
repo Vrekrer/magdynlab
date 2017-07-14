@@ -19,4 +19,6 @@ from .kepco_bop import *
 from .kepco_bop_blind import *
 from .srs_ds335 import *
 from .srs_sr830 import *
+from .srs_sr844 import *
 from .rs_vna_z24 import *
+from .agilent_e3648a import *

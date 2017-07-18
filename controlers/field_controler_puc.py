@@ -25,19 +25,19 @@ class FieldControlerPUC(object):
         self.MaxHRate = 20.0 #Rate H maximo en Oe/s
         self.InToH = 2.89 #Oe por valor de entrada medidos (Oe/A)
         self._sign = +1
-        
+
         self.PowerSupply.output = 2
         self.PowerSupply.range = 'P20V'
         self.PowerSupply.voltage = 0.0
         self.PowerSupply.output = 1
-        
+
     def __del__(self):
         self.PowerSupply.outStatus = 'OFF'
-        #pass
 
     @property
     def _polarity(self):
         return self._sign
+
     @_polarity.setter
     def _polarity(self, value):
         if value >= 0:
@@ -50,7 +50,7 @@ class FieldControlerPUC(object):
             self.PowerSupply.voltage = 9.0
             self.PowerSupply.output = 1
             self._sign = -1
-        
+
     def getField(self, Unit = 'Oe'):
 #        Returns the measured magnetic field in Oe.
 #        Usage :

@@ -15,6 +15,7 @@ from .instruments_base import InstrumentBase as _InstrumentBase
 
 __all__ = ['SRS_SR844']
 
+
 class SRS_SR844(_InstrumentBase):
     def __init__(self,
                  GPIB_Address=8, GPIB_Device=0, RemoteOnly=False,
@@ -25,17 +26,15 @@ class SRS_SR844(_InstrumentBase):
         self._IDN = 'SRS_SR844'
         self.VI.write_termination = self.VI.LF
         self.VI.read_termination = self.VI.LF
-        self.write('OUTX 1') #GPIB Mode
+        self.write('OUTX 1')  # GPIB Mode
         self.RemoteOnly(RemoteOnly)
-        
-        
-    def RemoteOnly(self, rO = True):
+
+    def RemoteOnly(self, rO=True):
         if rO:
             self.write('OVRM 0')
         else:
             self.write('OVRM 1')
 
-            
     @property
     def TC(self):
         '''
@@ -78,7 +77,7 @@ class SRS_SR844(_InstrumentBase):
                 1E3, 3E3, 10E3, 30E3]
         tc_i = _np.abs(_np.array(bins) - tc).argmin()
         self.write('OFLT %d' % tc_i)
-        
+
     @property
     def SEN(self):
         '''
@@ -89,16 +88,16 @@ class SRS_SR844(_InstrumentBase):
         # SEN  Codes
         # Codes : Voltage
         #  '0'  = 100 nV
-        #  '1'  = 300 nV 
-        #  '2'  = 1   uV 
-        #  '3'  = 3   uV 
-        #  '4'  = 10  uV 
-        #  '5'  = 30  uV 
-        #  '6'  = 100 uV 
-        #  '7'  = 300 uV 
-        #  '8'  = 1   mV 
-        #  '9'  = 3   mV 
-        #  '10' = 10  mV 
+        #  '1'  = 300 nV
+        #  '2'  = 1   uV
+        #  '3'  = 3   uV
+        #  '4'  = 10  uV
+        #  '5'  = 30  uV
+        #  '6'  = 100 uV
+        #  '7'  = 300 uV
+        #  '8'  = 1   mV
+        #  '9'  = 3   mV
+        #  '10' = 10  mV
         #  '11' = 30  mV
         #  '12' = 100 mV
         #  '13' = 300 mV
@@ -109,7 +108,7 @@ class SRS_SR844(_InstrumentBase):
                 1E-3, 3E-3, 10E-3, 30E-3, 100E-3, 300E-3,
                 1][sen_i]
         return vSen
-        
+
     @SEN.setter
     def SEN(self, vSen):
         vSen = _np.abs(vSen)
@@ -119,7 +118,7 @@ class SRS_SR844(_InstrumentBase):
                 1]
         sen_i = _np.abs(_np.array(bins) - vSen).argmin()
         self.write('SENS %d' % sen_i)
-    
+
     def FilterSlope(self, sl):
         '''
         Set the output filter slope
@@ -139,19 +138,18 @@ class SRS_SR844(_InstrumentBase):
     def setOscilatorFreq(self, freq):
         '''Set the internal Oscilator Frequency'''
         self.write('FREQ %0.6f' % freq)
-        
+
     def getReferenceFreq(self):
-        return numpy.float(self.query('FRAQ?'))
-          
+        return self.query_float('FRAQ?')
+
     def setRefPhase(self, ph):
-        #Set the phase reference"""
-        self.write('PHAS %0.6f' %ph)
-        
+        '''Set the phase reference'''
+        self.write('PHAS %0.6f' % ph)
+
     def getRefPhase(self):
-        #Get the programed phase reference"""
-        return numpy.float(self.query('PHAS?'))
-        
-            
+        '''Get the programed phase reference'''
+        return self.query_float('PHAS?')
+
     @property
     def X(self):
         return self.query_float('OUTP? 1')
@@ -171,7 +169,7 @@ class SRS_SR844(_InstrumentBase):
     @property
     def Freq(self):
         return self.query_float('FRAQ?')
-        
+
     @property
     def AUX_In_1(self):
         return self.query_float('OAUX?1')

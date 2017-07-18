@@ -3,9 +3,9 @@
 # Author: Diego González Chávez
 # email : diegogch@cbpf.br / diego.gonzalez.chavez@gmail.com
 #
-#This class controls the: 
-#Monopolar Power Supplies
-#AGILENT E36XX
+# This class controls the:
+# Monopolar Power Supplies
+# AGILENT E36XX
 #
 # TODO:
 # Make documentation
@@ -32,6 +32,7 @@ class E3648A(_InstrumentBase):
     @property
     def output(self):
         return self.query('INST:SEL?')
+
     @output.setter
     def output(self, value):
         if value in [1, 2]:
@@ -39,53 +40,56 @@ class E3648A(_InstrumentBase):
         elif value in ['OUTP1', 'OUTP2', 'OUT1', 'OUT2']:
             self.write('INST:SEL %s' % value)
         else:
-            print('Output error code') 
+            print('Output error code')
 
     @property
     def outStatus(self):
-        stat = int( self.query('OUTP:STAT?') )
-        return {1:'ON', 0:'OFF'}[stat] 
+        stat = self.query_int('OUTP:STAT?')
+        return {1: 'ON', 0: 'OFF'}[stat]
+
     @outStatus.setter
     def outStatus(self, value):
         if value in [0, 1]:
-            self.write('OUTP:STAT %s' % {1:'ON', 0:'OFF'}[value])
+            self.write('OUTP:STAT %s' % {1: 'ON', 0: 'OFF'}[value])
         elif value in ['ON', 'OFF', 'on', 'off', 'On', 'Off']:
             self.write('OUTP:STAT %s' % value)
         else:
-            print('Output Status error code') 
-    
+            print('Output Status error code')
+
     @property
     def range(self):
         return self.query('VOLT:RANG?')
+
     @range.setter
     def range(self, value):
-        self.write('VOLT:RANG %s' %value)
+        self.write('VOLT:RANG %s' % value)
 
     @property
     def current(self):
-        return float( self.query('CURR:LEV:IMM:AMPL?') )
+        return self.query_float('CURR:LEV:IMM:AMPL?')
+
     @current.setter
     def current(self, value):
-        self.write('APPL MAX, %0.4f' %value)
-        
+        self.write('APPL MAX, %0.4f' % value)
+
     @property
     def voltage(self):
-        return float( self.query('VOLT:LEV:IMM:AMPL?') )
+        return self.query_float('VOLT:LEV:IMM:AMPL?')
+
     @voltage.setter
     def voltage(self, value):
-        self.write('APPL %0.4f, MAX' %value)
-        
+        self.write('APPL %0.4f, MAX' % value)
+
     @property
-    def MeasuredVoltage(self):
-        #Measured Voltage Value"""
-        return float(self.query('MEAS:SCAL:VOLT:DC?'))
+    def measured_voltage(self):
+        '''Measured Voltage Value'''
+        return self.query_float('MEAS:SCAL:VOLT:DC?')
+
     @property
-    def MeasuredCurrent(self):
-        #Measured Current Value"""
+    def measured_current(self):
+        '''Measured Current Value'''
         return float(self.query('MEAS:SCAL:CURR:DC?'))
 
     def BEEP(self):
-        #BEEP
+        '''BEEP'''
         self.write('SYST:BEEP')
-
-

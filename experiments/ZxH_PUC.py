@@ -25,11 +25,11 @@ def MyPlot(Data):
         ax.set_xlim(*Data.xlim)
         ax.set_ylim(*(numpy.array(Data.ylim)*scale_factor))
     line = ax.lines[-1]
-    line.set_data(Data.dat[:,0], Data.dat[:,1]*scale_factor)
+    line.set_data(Data.dat[:,0], (Data.dat[:,1]-Data.dat[0,1])*scale_factor)
     line = ax.lines[-2]
-    line.set_data(Data.dat[:,0], Data.dat[:,2]*scale_factor)
+    line.set_data(Data.dat[:,0], (Data.dat[:,2]-Data.dat[0,2])*scale_factor)
     ax.set_xlabel('Field (Oe)')
-    ax.set_ylabel('V x 10^-%d' % numpy.log10(scale_factor))
+    ax.set_ylabel('DV x 10^-%d' % numpy.log10(scale_factor))
     ax.grid(True)
 
     f.tight_layout()
@@ -87,7 +87,7 @@ class ZxH(object):
         self.Data.reset(n=4)
         self.Data.xlim = [fields.min(), fields.max()]
         sen = self.VC.LockIn.SEN * 1.5
-        self.Data.ylim = [-sen, sen]
+        self.Data.ylim = [-sen/100, sen/100]
         
         if TC != 'Auto':
             self.VC.LockIn.TC = TC
@@ -151,8 +151,8 @@ class ZxH(object):
     def Stop(self, TurnOff = True):
         print('Stoping...')
         self.FC.BEEP()
-        self.FieldSweep.stop()
-        self.FreqSweep.stop()
+        self.FieldSweep.Stop()
+        self.FreqSweep.Stop()
         if self.FieldSweep.thread is not None:
             self.FieldSweep.thread.join()
         if self.FreqSweep.thread is not None:

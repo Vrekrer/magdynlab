@@ -151,8 +151,8 @@ class ZxH(object):
     def Stop(self, TurnOff = True):
         print('Stoping...')
         self.FC.BEEP()
-        self.FieldSweep.Stop()
-        self.FreqSweep.Stop()
+        self.FieldSweep.stop()
+        self.FreqSweep.stop()
         if self.FieldSweep.thread is not None:
             self.FieldSweep.thread.join()
         if self.FreqSweep.thread is not None:

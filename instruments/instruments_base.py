@@ -22,7 +22,7 @@ class InstrumentBase(object):
     Base class for all instrument classes in magdynlab
     '''
 
-    def __init__(self, ResourceName, logFile=None):
+    def __init__(self, ResourceName, logFile='MagDynLab_Log'):
         if os.name == 'nt':
             rm = visa.ResourceManager()
         else:

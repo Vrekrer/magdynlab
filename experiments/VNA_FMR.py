@@ -2,6 +2,7 @@
 
 import numpy
 import time
+import os
 import magdynlab.instruments
 import magdynlab.controlers
 import magdynlab.data_types
@@ -35,9 +36,10 @@ def MyPlot(Data):
 
 class VNA_FMR(object):
     def __init__(self, GPIB_Device=0):
-        PowerSource = magdynlab.instruments.KEPCO_BOP(GPIB_Device=GPIB_Device)
-        Voltmeter = magdynlab.instruments.KEITHLEY_2000(GPIB_Device=GPIB_Device)
-        VNA = magdynlab.instruments.RS_VNA_Z(ResourceName='TCPIP::192.168.0.2::INSTR')
+        logFile = os.path.expanduser('~/MagDynLab.log')
+        PowerSource = magdynlab.instruments.KEPCO_BOP(GPIB_Device=GPIB_Device, logFile=logFile)
+        Voltmeter = magdynlab.instruments.KEITHLEY_2000(GPIB_Device=GPIB_Device, logFile=logFile)
+        VNA = magdynlab.instruments.RS_VNA_Z(ResourceName='TCPIP::192.168.0.2::INSTR', logFile=logFile)
 
         self.VNAC = magdynlab.controlers.VNA_Controler(VNA)
         self.FC = magdynlab.controlers.FieldControlerDriven(PowerSource, Voltmeter)

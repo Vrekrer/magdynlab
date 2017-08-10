@@ -70,8 +70,13 @@ class InstrumentBase(object):
         return returnQ
 
     def query_type(self, command, type_caster):
-        returnQ = self.query(command)
-        return type_caster(returnQ)
+        try:
+            returnQ = self.query(command)
+            return type_caster(returnQ)
+        except Exception as E:
+            self._logWrite('ERROR', E.__repr__())
+            returnQ = self.query(command)
+            return type_caster(returnQ)
 
     def query_int(self, command):
         return self.query_type(command, int)

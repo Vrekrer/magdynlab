@@ -82,8 +82,10 @@ class InstrumentBase(object):
     def query_values(self, command):
         read_term = self.VI.read_termination
         self.VI.read_termination = None
+        self._logWrite('query_binary', command)
         data = numpy.array(self.VI.query_binary_values(command, datatype='d'))
         self.VI.read_termination = read_term
+        self._logWrite('len return data:', str(len(data)))
         return data
 
 

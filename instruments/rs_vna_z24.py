@@ -32,6 +32,9 @@ class RS_VNA_Z(_InstrumentBase):
         self.VI.write_termination = None
         self.VI.read_termination = None
         self.write('FORM:DATA REAL, 64')
+        self.VI._values_format.is_binary = True
+        self.VI._values_format.datatype = 'd' # float 64 bits
+        self.VI._values_format.is_big_endian = False
         self.Ch1 = Channel(self, 1)
         #  self.Ch2 = Channel(self, 2)
 

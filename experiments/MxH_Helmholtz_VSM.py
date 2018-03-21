@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 @ThD.gui_safe
 def MyPlot(Data):
-    f = plt.figure('AGFM MxH', (5,4))
+    f = plt.figure('VSM MxH', (5,4))
     
     if not(f.axes):
         plt.subplot()
@@ -34,7 +34,7 @@ def MyPlot(Data):
 
 @ThD.gui_safe
 def FreqPlot(Data):
-    f = plt.figure('AGFM Amp vs Freq', (5,4))
+    f = plt.figure('VSM Amp vs Freq', (5,4))
     
     if not(f.axes):
         plt.subplot()
@@ -56,8 +56,8 @@ def FreqPlot(Data):
     
 class MxH(object):
     def __init__(self):
-        PowerSource = magdynlab.instruments.KEPCO_BOP_blind(GPIB_Address=7)
-        LockIn = magdynlab.instruments.SRS_SR830(GPIB_Address=22)
+        PowerSource = magdynlab.instruments.KEPCO_BOP(GPIB_Address=6)
+        LockIn = magdynlab.instruments.DSP_7265(GPIB_Address=12)
 
         self.FC = magdynlab.controlers.FieldControler(PowerSource)
         self.VC = magdynlab.controlers.LockIn_Mag_Controler(LockIn)

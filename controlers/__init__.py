@@ -13,6 +13,7 @@ from .field_controler_driven import *
 from .field_controler_puc import *
 from .lockin_mag_controler import *
 from .vna_controler import *
+from .ia_controler import *
 from .resistance_controler import *
 from .z_controler_puc import *
 # from .lcr_controler_puc import *

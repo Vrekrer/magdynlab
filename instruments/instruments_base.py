@@ -85,10 +85,11 @@ class InstrumentBase(object):
         return self.query_type(command, float)
 
     def query_values(self, command):
+        # NOTE: VI._values_format should be set.to the adequate format
         read_term = self.VI.read_termination
         self.VI.read_termination = None
-        self._logWrite('query_binary', command)
-        data = numpy.array(self.VI.query_binary_values(command, datatype='d'))
+        self._logWrite('query_values', command)
+        data = numpy.array(self.VI.query_values(command))
         self.VI.read_termination = read_term
         self._logWrite('len return data:', str(len(data)))
         return data

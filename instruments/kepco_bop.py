@@ -25,7 +25,7 @@ class KEPCO_BOP(_InstrumentBase):
             ResourceName = 'GPIB%d::%d::INSTR' % (GPIB_Device, GPIB_Address)
         super().__init__(ResourceName, logFile)
         self._IDN = 'KEPCO BOP'
-        self.VI.write_termination = self.VI.LF
+        self.VI.write_termination = None
         self.VI.read_termination = self.VI.LF
         self.write('*CLS')
         self.write('*RST')

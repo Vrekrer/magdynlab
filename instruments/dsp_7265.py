@@ -237,15 +237,15 @@ class DSP_7265(_InstrumentBase):
 
     def setOscilatorFreq(self, freq):
         '''Set the internal Oscilator Frequency'''
-        self.write('OF %d' % freq*1000)
+        self.write('OF %d' % (freq*1000))
 
     def setOscilatorAmp(self, amp):
         '''Set the internal Oscilator Amplitude'''
-        self.write('OA %d' % amp*1E6)
+        self.write('OA %d' % (amp*1E6))
 
     def setRefPhase(self, ph):
         '''Set the phase reference'''
-        self.write('REFP %d' % ph*1E3)
+        self.write('REFP %d' % (ph*1E3))
 
     def getRefPhase(self):
         '''Get the programed phase reference'''
@@ -270,3 +270,31 @@ class DSP_7265(_InstrumentBase):
     @property
     def Freq(self):
         return self.query_float('FRQ.')
+        
+        
+        
+'''
+L.write('ADC3TIME 200')
+
+L.query('ADC. 3')
+Out[43]: '4239'
+
+L.query('ADC. 1')
+Out[44]: '4.19E-01'
+
+2 * int(L.query('ADC. 3'))/int(L.query('ADC3TIME.'))
+Out[45]: 42.42
+
+2 * int(L.query('ADC. 3'))/int(L.query('ADC3TIME.'))/100
+Out[46]: 0.4239
+
+L.write('ADC3TIME 50')
+
+2 * int(L.query('ADC. 3'))/int(L.query('ADC3TIME.'))/100
+Out[48]: 0.42479999999999996
+
+L.write('ADC3TIME 1000')
+
+2 * int(L.query('ADC. 3'))/int(L.query('ADC3TIME.'))/100
+Out[50]: 0.42404000000000003
+'''

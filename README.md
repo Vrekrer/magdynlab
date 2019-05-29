@@ -3,14 +3,14 @@
 This software is developed for the automation and control of the experiments of the Magnetization Dynamics Laboratory at the Brazilian Center for Physics Research (CBPF), Rio de Janeiro, Brazil.
 
 The main purpose of this software is to be easy to use.
-Anyone with a minimal python programing skill should be able to easly create new experiment routines.
+Anyone with a minimal python programming skill should be able to easily create new experiment routines.
 
 ## How to use:
 
-This software uses three layers of abstraction to simplifiy the creation of experiment routines
+This software uses three layers of abstraction to simplify the creation of experiment routines
 
 ## 1.- Instruments
-> This layer handles the complexity of comunication with the phisical instruments
+> This layer handles the complexity of communication with the physical instruments
 
 > For example, for setting out the output current of a power source KEPCO instrument, instead of doing:
 
@@ -27,7 +27,7 @@ This software uses three layers of abstraction to simplifiy the creation of expe
 > KepcoVI.write('OUTPUT ON')
 > KepcoVI.write('FUNC:MODE CURR')
 > KepcoVI.write('VOLT 20') #  Protection voltage 20 Volts
-> 
+>
 > current_value = 10  # 10 Amps
 > KepcoVI.write('CURR %0.4f' % current_value)
 > ```
@@ -40,7 +40,7 @@ This software uses three layers of abstraction to simplifiy the creation of expe
 > PowerSource = magdynlab.instruments.KEPCO_BOP(GPIB_Address=6)
 > PowerSource.CurrentMode()
 > PowerSource.voltage = 20 #  Protection voltage 20 Volts
-> 
+>
 > PowerSource.current = 10  # 10 Amps
 > ```
 
@@ -84,7 +84,7 @@ This software uses three layers of abstraction to simplifiy the creation of expe
 ## 3.- Experiments
 > This layer is used to implement experiment routines
 
-> For example, to measure a magentization curve in a VSM the following code can be used:
+> For example, to measure a magnetization curve in a VSM the following code can be used:
 
 > ```python
 > import numpy
@@ -94,11 +94,11 @@ This software uses three layers of abstraction to simplifiy the creation of expe
 >  
 > PowerSource = magdynlab.instruments.KEPCO_BOP(GPIB_Address=6)
 > LockIn = magdynlab.instruments.SRS_SR830()
-> 
+>
 > FC = magdynlab.controlers.FieldControler(PowerSource)
 > VC = magdynlab.controlers.LockIn_Mag_Controler(LockIn)
 > Data = magdynlab.data_types.Data2D()
-> 
+>
 > FC.HperOut = 15.87  # Coil calibration in Oe/A
 > FC.MaxHRate = 30.0  # Max field rate in Oe/s
 > VC.emu_per_V = 18.7  # Sensing coils sensibility in emu/V
@@ -118,7 +118,7 @@ then, making a real measurement is as simple as:
 
 > ```python
 > r1 = numpy.linspace(-300, 300, 101)
-> field_pts = numpy.r_[r1, r1[::-1]]  # 101 points from -300 Oe to 300 Oe 
+> field_pts = numpy.r_[r1, r1[::-1]]  # 101 points from -300 Oe to 300 Oe
 >                                     # and the same in the oposite direction
 > Measure_MxH(field_pts, 'my_output_file.txt')
 > ```

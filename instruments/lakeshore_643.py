@@ -1,6 +1,6 @@
 # coding=utf-8
 
-# Author: Diego González Chávez
+# Author: Diego Gonzalez Chavez
 # email : diegogch@cbpf.br / diego.gonzalez.chavez@gmail.com
 #
 # This class controls the:
@@ -11,25 +11,42 @@
 # Make documentation
 
 import time as _time
+import pyvisa.constants as _pvc
 from .instruments_base import InstrumentBase as _InstrumentBase
+from .instruments_base import findResource
 
 __all__ = ['LakeShore_643']
 
-
 class LakeShore_643(_InstrumentBase):
     def __init__(self,
-                 GPIB_Address=13, GPIB_Device=0,
                  ResourceName=None, logFile=None):
         if ResourceName is None:
-            ResourceName = 'GPIB%d::%d::INSTR' % (GPIB_Device, GPIB_Address)
+            ResourceName = findResource('LSCI,MODEL643',
+                                        filter_string='ASRL',
+                                        timeout=2000,
+                                        baud_rate=57600, 
+                                        data_bits=7,
+                                        parity=_pvc.Parity.odd, 
+                                        stop_bits=_pvc.StopBits.one,
+                                        read_termination='\r\n',
+                                        write_termination='\r\n')
         super().__init__(ResourceName, logFile)
         self._IDN = 'LakeShore 643'
         self.VI.write_termination = self.VI.CR + self.VI.LF
         self.VI.read_termination = self.VI.CR + self.VI.LF
+        self.VI.parity=_pvc.Parity.odd
+        self.VI.stop_bits=_pvc.StopBits.one
+        self.VI.baud_rate=57600
+        self.VI.data_bits=7
         self.write('*CLS')
+        _time.sleep(0.1)
         self.write('*RST')
-        self.write('RATE +0.1')  # 0.1 A/s
-        self.write('LIMIT +50.0 +0.1')  # max I 50A , max rate 0.1 A/s
+        _time.sleep(1)
+        self.query('RATE?') #?? Needed??
+        self.write('RATE +0.5')  # 0.5 A/s
+        _time.sleep(0.1)
+        self.write('LIMIT +50.0 +0.5')  # max I 50A , max rate 0.5 A/s
+        _time.sleep(0.1)
 
     def __del__(self):
         self.write('STOP')
@@ -48,7 +65,9 @@ class LakeShore_643(_InstrumentBase):
         if wait=False (default) returns immediately.
         '''
         self.write('STOP')
-        self.Set_setpoint(0, wait)
+        self.setpoint = 0
+        if wait:
+            self.WaitRamp()
 
     @property
     def ramp_done(self):
@@ -59,7 +78,7 @@ class LakeShore_643(_InstrumentBase):
     def ramp_rate(self):
         '''
         Sets or query the ramp rate in A/s
-        Max (default) value = 0.1 A/s
+        Max (default) value = 0.5 A/s
         '''
         return self.query_float('RATE?')
 
@@ -71,7 +90,8 @@ class LakeShore_643(_InstrumentBase):
         '''
         Wait until the output setpoint is reached
         '''
-        while not(self.rampDone):
+        _time.sleep(t_test)
+        while not(self.ramp_done):
             _time.sleep(t_test)
 
     @property

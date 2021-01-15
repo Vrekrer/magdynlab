@@ -19,6 +19,8 @@ class KEPCO_BOP_blind(_base_KEPCO):
                  GPIB_Address=6, GPIB_Device=0,
                  ResourceName=None, logFile=None):
         super().__init__(GPIB_Address, GPIB_Device, ResourceName, logFile)
+        # write_term = None  **From _base_KEPCO
+        # read_term = '/n'
         self._IDN = 'KEPCO BOP BLIND'
         self._voltage = 0
         self._current = 0

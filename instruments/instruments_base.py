@@ -13,8 +13,56 @@ import visa
 import datetime
 import os
 import numpy
+import time
 
 __all__ = ['InstrumentBase']
+
+Resources_in_use = []
+
+def findResource(search_string,
+                 filter_string='',
+                 query_string='*IDN?',
+                 open_delay=2,
+                 **kwargs):
+    if os.name == 'nt':
+        rm = visa.ResourceManager()
+    else:
+        rm = visa.ResourceManager('@py')
+    for resource in set(rm.list_resources()).difference(Resources_in_use):
+        if filter_string in resource:
+            VI = rm.open_resource(resource, **kwargs)
+            time.sleep(open_delay)
+            try:
+                VI.clear()
+                if search_string in VI.query(query_string):
+                    VI.close()
+                    return resource
+            except:
+                VI.close()
+                pass
+    return None
+
+
+class ValuesFormat(object):
+    def __init__(self):
+        # Info: 
+        #  http://pyvisa.readthedocs.io/en/stable/rvalues.html
+        #   query_binary_values
+        #   query_ascii_values
+        # datatype info:
+        #  https://docs.python.org/3/library/struct.html#format-characters
+        self.is_binary = True
+        self.container = numpy.array
+        self.delay = None
+
+        # Binary format
+        self.datatype = 'd'  # float 64 bits
+        self.is_big_endian = False
+        self.header_fmt = 'ieee'
+
+        # Ascii format
+        self.converter = 'f'
+        self.separator = ','
 
 
 class InstrumentBase(object):
@@ -22,21 +70,23 @@ class InstrumentBase(object):
     Base class for all instrument classes in magdynlab
     '''
 
-    def __init__(self, ResourceName, logFile=None):
+    def __init__(self, ResourceName, logFile=None, **kargs):
         if os.name == 'nt':
             rm = visa.ResourceManager()
         else:
             rm = visa.ResourceManager('@py')
-        self.VI = rm.open_resource(ResourceName)
+        self.VI = rm.open_resource(ResourceName, **kargs)
+        Resources_in_use.append(ResourceName)
         self._IDN = self.VI.resource_name
         if logFile is None:
-            self._logFile = logFile
+            self._logFile = None
         else:
             if not os.path.isfile(logFile):
                 with open(logFile, 'w') as log:
                     log.write('MagDynLab Instruments LogFile\n')
             self._logFile = os.path.abspath(logFile)
         self._logWrite('OPEN_')
+        self.values_format = ValuesFormat()
 
     def __del__(self):
         self._logWrite('CLOSE')
@@ -66,7 +116,11 @@ class InstrumentBase(object):
     def query(self, command):
         self._logWrite('query', command)
         returnQ = self.VI.query(command)
-        self._logWrite('resp ', returnQ)
+        returnQL = returnQ
+        if len(returnQ) > 100:
+            self._logWrite('resp ', returnQ[:100] + '...')
+        else:
+            self._logWrite('resp ', returnQ)
         return returnQ
 
     def query_type(self, command, type_caster):
@@ -85,12 +139,25 @@ class InstrumentBase(object):
         return self.query_type(command, float)
 
     def query_values(self, command):
-        # NOTE: VI._values_format should be set.to the adequate format
-        read_term = self.VI.read_termination
-        self.VI.read_termination = None
-        self._logWrite('query_values', command)
-        data = numpy.array(self.VI.query_values(command))
-        self.VI.read_termination = read_term
+        # NOTE: self.values_format should be set to the adequate format
+        if self.values_format.is_binary:
+            read_term = self.VI.read_termination
+            self.VI.read_termination = None
+            self._logWrite('query_binary_values', command)
+            options = {'datatype': self.values_format.datatype,
+                       'is_big_endian': self.values_format.is_big_endian,
+                       'header_fmt': self.values_format.header_fmt,
+                       'delay': self.values_format.delay,
+                       'container': self.values_format.container}
+            data = self.VI.query_binary_values(command, **options)
+            self.VI.read_termination = read_term
+        else:
+            self._logWrite('query_ascii_values', command)
+            options = {'converter': self.values_format.converter,
+                       'separator': self.values_format.separator,
+                       'delay': self.values_format.delay,
+                       'container': self.values_format.container}
+            data = self.VI.query_ascii_values(command, **options)
         self._logWrite('len return data:', str(len(data)))
         return data
 

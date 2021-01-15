@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-#MxH_Helmholtz_AGFM
+#Osciloscopio usando USB_1602HS
 
 import numpy
 import time

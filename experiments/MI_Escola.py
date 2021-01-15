@@ -4,7 +4,7 @@ import numpy
 import time
 import os
 import magdynlab.instruments
-import magdynlab.controlers
+import magdynlab.controllers
 import magdynlab.data_types
 import threading_decorators as ThD
 import matplotlib.pyplot as plt
@@ -37,11 +37,11 @@ def MyPlot(Data):
 class MI(object):
     def __init__(self, GPIB_Device=0):
         logFile = os.path.expanduser('~/MagDynLab.log')
-        PowerSource = magdynlab.instruments.KEPCO_BOP_blind(GPIB_Device=GPIB_Device, logFile=logFile)
-        IA = magdynlab.instruments.KEYSIGHT_E4990A(ResourceName='TCPIP::192.168.0.3::INSTR', logFile=logFile)
+        PowerSource = magdynlab.instruments.KEPCO_BOP_blind(ResourceName='TCPIP0::192.168.13.3::KepcoBOP2020::INSTR', logFile=logFile)
+        IA = magdynlab.instruments.KEYSIGHT_E4990A(ResourceName='TCPIP0::192.168.13.3::USB_E4990A::INSTR', logFile=logFile)
 
-        self.IAC = magdynlab.controlers.IA_Controler(IA)
-        self.FC = magdynlab.controlers.FieldControler(PowerSource)
+        self.IAC = magdynlab.controlers.IA_Controller(IA)
+        self.FC = magdynlab.controlers.FieldController(PowerSource)
         self.FC.Kepco.Voltage = 15
 
         # We store the raw Z parameters here

@@ -3,7 +3,7 @@
 # Author: Diego González Chávez
 # email : diegogch@cbpf.br / diego.gonzalez.chavez@gmail.com
 #
-# Magneto Impedance Controler for PUC
+# Magneto Impedance Controller for PUC
 #
 # TODO:
 # Make documentation

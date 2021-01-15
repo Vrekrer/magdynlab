@@ -3,7 +3,7 @@
 # Author: Diego González Chávez
 # email : diegogch@cbpf.br / diego.gonzalez.chavez@gmail.com
 #
-# LockIn controler for magnetometers
+# LockIn controller for magnetometers
 #
 # TODO:
 # Make documentation
@@ -11,10 +11,10 @@
 import time
 import numpy
 
-__all__ = ['LockIn_Mag_Controler']
+__all__ = ['LockIn_Mag_Controller']
 
 
-class LockIn_Mag_Controler(object):
+class LockIn_Mag_Controller(object):
     '''
     LockIn controler for magnetometers
     '''

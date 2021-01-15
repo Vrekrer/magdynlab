@@ -11,11 +11,11 @@
 # Make documentation
 
 import time as _time
-import numpy as _np
 from .instruments_base import InstrumentBase as _InstrumentBase
 from .instruments_base import InstrumentChild as _InstrumentChild
 
 __all__ = ['KEYSIGHT_E4990A']
+
 
 class KEYSIGHT_E4990A(_InstrumentBase):
     def __init__(self,
@@ -31,15 +31,17 @@ class KEYSIGHT_E4990A(_InstrumentBase):
         self.write('*CLS')
         self.write('FORMat:DATA REAL')
         self.write('FORMat:BORDer NORM')
-        self.VI._values_format.is_binary = True
-        self.VI._values_format.datatype = 'd' # float 64 bits
-        self.VI._values_format.is_big_endian = True
+        self.values_format.is_binary = True
+        self.values_format.datatype = 'd'  # float 64 bits
+        self.values_format.is_big_endian = True
         self.Ch1 = Channel(self, 1)
+        self.write('INIT1:CONT ON')
 
     def query(self, command):
         # Remove \n terminations by software
         returnQ = super().query(command)
         return returnQ.strip('\n')
+
 
 class Channel(_InstrumentChild):
     def __init__(self, parent, ChanNum=1, ID='Auto'):
@@ -49,7 +51,7 @@ class Channel(_InstrumentChild):
             self.ID = 'Ch%d' % self.number
         else:
             self.ID = ID
-    #    self.write('CONF:CHAN%d:STAT ON' % self.number)
+        # self.write('CONF:CHAN%d:STAT ON' % self.number)
 
     def SetSweep(self, start, stop, step, np=50):
         self.write('SENS%(Ch)d:FREQ:STAR %(f)0.11E' %
@@ -72,8 +74,7 @@ class Channel(_InstrumentChild):
 
     @property
     def source_mode(self):
-        val = self.query('SOUR%(Ch)d:MODE?'% {'Ch': self.number})
-        return val
+        return self.query('SOUR%(Ch)d:MODE?' % {'Ch': self.number})
 
     @source_mode.setter
     def source_mode(self, val):
@@ -81,12 +82,43 @@ class Channel(_InstrumentChild):
                       'V':       'VOLT',
                       'Current': 'CURR',
                       'I':       'CURR'}.get(val, 'VOLT')
-        self.write('SOUR%(Ch)d:MODE %(mode)s' % 
+        self.write('SOUR%(Ch)d:MODE %(mode)s' %
                    {'Ch': self.number, 'mode': source_str})
 
     @property
+    def source_voltage(self):
+        return self.query_float('SOUR%(Ch)d:VOLT?' % {'Ch': self.number})
+
+    @source_voltage.setter
+    def source_voltage(self, val):
+        self.write('SOUR%(Ch)d:VOLT %(val)0.3E' % 
+                   {'Ch': self.number, 'val': val})
+
+    @property
+    def bias_mode(self):
+        return self.query('SOUR%(Ch)d:BIAS:MODE?' % {'Ch': self.number})
+
+    @bias_mode.setter
+    def bias_mode(self, val):
+        source_str = {'Voltage': 'VOLT',
+                      'V':       'VOLT',
+                      'Current': 'CURR',
+                      'I':       'CURR'}.get(val, 'VOLT')
+        self.write('SOUR%(Ch)d:BIAS:MODE %(mode)s' %
+                   {'Ch': self.number, 'mode': source_str})
+
+    @property
+    def bias_voltage(self):
+        return self.query_float('SOUR%(Ch)d:BIAS:VOLT?' % {'Ch': self.number})
+
+    @bias_voltage.setter
+    def bias_voltage(self, val):
+        self.write('SOUR%(Ch)d:BIAS:VOLT %(val)0.3E' % 
+                   {'Ch': self.number, 'val': val})
+
+    @property
     def traces(self):
-        trcCount = self.query_int('CALC%(Ch)d:PAR:COUN?' % 
+        trcCount = self.query_int('CALC%(Ch)d:PAR:COUN?' %
                                   {'Ch': self.number})
         vTraces = []
         for trN in range(trcCount):
@@ -97,9 +129,12 @@ class Channel(_InstrumentChild):
 
     def TRIG(self):
         while True:
+            while self.query_int('STAT:OPER:COND?') & (1 << 4):
+                _time.sleep(0.01)
             self.write('TRIG:IMM')
             if self.query('SYST:ERR?') == '+0,"No error"':
                 break
+            _time.sleep(0.1)
 
 class Trace(_InstrumentChild):
     def __init__(self, parent, trcNum):
@@ -123,7 +158,8 @@ class Trace(_InstrumentChild):
             averCount = 1
         for i in range(averCount):
             self.parent.TRIG()
-            while self.query_int('STAT:OPER:COND?') & (1<<4): # test bit4 Measuring
+            # test bit4 Measuring
+            while self.query_int('STAT:OPER:COND?') & (1 << 4):
                 _time.sleep(0.01)
 
     def getFDAT(self, New=False):
@@ -151,4 +187,3 @@ class Trace(_InstrumentChild):
             self.getNewData()
         RDAT = self.query_values('CALC%(Ch)d:DATA:RDAT?' % {'Ch': ChN})
         return RDAT[::2] + 1.0j*RDAT[1::2]
-

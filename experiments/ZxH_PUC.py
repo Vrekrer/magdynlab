@@ -5,7 +5,7 @@
 import numpy
 import time
 import magdynlab.instruments
-import magdynlab.controlers
+import magdynlab.controllers
 import magdynlab.data_types
 import threading_decorators as ThD
 import matplotlib.pyplot as plt
@@ -65,8 +65,8 @@ class ZxH(object):
         PowerSource = magdynlab.instruments.E3648A()
         LockIn = magdynlab.instruments.SRS_SR844()
         
-        self.FC = magdynlab.controlers.FieldControlerPUC(PowerSource)
-        self.VC = magdynlab.controlers.ZControler_PUC(LockIn)
+        self.FC = magdynlab.controllers.FieldControlerPUC(PowerSource)
+        self.VC = magdynlab.controllers.ZControler_PUC(LockIn)
 
         self.Data = magdynlab.data_types.Data2D()
         self.Data.reset(n=4)

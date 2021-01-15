@@ -17,6 +17,7 @@ from .instruments_base import InstrumentBase as _InstrumentBase
 
 __all__ = ['KEPCO_BOP']
 
+
 class KEPCO_BOP(_InstrumentBase):
     def __init__(self,
                  GPIB_Address=6, GPIB_Device=0,

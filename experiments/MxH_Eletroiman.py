@@ -4,6 +4,7 @@
 
 import numpy
 import time
+import os
 import magdynlab.instruments
 import magdynlab.controllers
 import magdynlab.data_types
@@ -56,25 +57,27 @@ def FreqPlot(Data):
     
 class MxH(object):
     def __init__(self):
-        logFile = 'C:/VMS_log.log'
-        dir_Kepco = 'TCPIP0::192.168.1.8::5025::SOCKET'
-        dir_LockIn = 'TCPIP0::192.168.1.4::1234::SOCKET'
+        logFile = os.path.expanduser('~/MagDynLab.log')
+        dir_PowerSource = 'GPIB0::13::INSTR'
+        dir_LockIn = 'GPIB0::22::INSTR'
+        dir_VoltMeter = 'TCPIP0::192.168.13.7::5025::SOCKET'
 
-        PowerSource = magdynlab.instruments.KEPCO_BOP(ResourceName = dir_Kepco, logFile=logFile)
-        LockIn = magdynlab.instruments.SRS_SR830(ResourceName = dir_LockIn, logFile=logFile)
+        PowerSource = magdynlab.instruments.LakeShore_643(
+            ResourceName=dir_PowerSource, 
+            logFile=logFile
+        )
+        LockIn = magdynlab.instruments.SRS_SR830(
+            ResourceName=dir_LockIn, 
+            logFile=logFile
+        )
 
-        class virtual_voltmeter(object):
-            def __init__(self, LockIn):
-                self.LockIn = LockIn
-            @property
-            def voltage(self):
-                return self.LockIn.AUX_In_3
-
-        Voltmeter = virtual_voltmeter(LockIn)
+        Voltmeter = magdynlab.instruments.VoltMeterArduino(
+            ResourceName=dir_VoltMeter,
+            logFile=logFile
+        )
 
         self.VC = magdynlab.controllers.LockIn_Mag_Controler(LockIn)
-        self.FC = magdynlab.controllers.FieldControlerDriven(PowerSource, Voltmeter)
-        self.FC.Kepco.voltage = 50
+        self.FC = magdynlab.controllers.FieldControlerDriven2(PowerSource, Voltmeter)
 
         #This is used to plot
         self.Data = magdynlab.data_types.Data2D()

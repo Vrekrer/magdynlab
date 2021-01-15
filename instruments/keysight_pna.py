@@ -5,43 +5,60 @@
 #
 # This class controls the:
 # Vector Network Analyzer
-# Rohde & Schwarz : VNA Z24
+# Keysight PNA series
 #
 # TODO:
 # Clean code
 # Make documentation
 
-import time as _time
 import numpy as _np
+import time as _time
 from .instruments_base import InstrumentBase as _InstrumentBase
 from .instruments_base import InstrumentChild as _InstrumentChild
 
-__all__ = ['RS_VNA_Z']
+__all__ = ['KEYSIGHT_PNA']
 
 
-class RS_VNA_Z(_InstrumentBase):
+class KEYSIGHT_PNA(_InstrumentBase):
     def __init__(self,
-                 GPIB_Address=20, GPIB_Device=0,
+                 GPIB_Address=16, GPIB_Device=0,
                  ResourceName=None, logFile=None):
         if ResourceName is None:
             ResourceName = 'GPIB%d::%d::INSTR' % (GPIB_Device, GPIB_Address)
         super().__init__(ResourceName, logFile)
-        self._IDN = 'R&S VNA'
+        self._IDN = 'KEYSIGHT PNA'
         self.write('*CLS')
-        self.write('SYST:COMM:GPIB:RTER EOI')
         self.VI.write_termination = None
         self.VI.read_termination = None
+        self.VI.timeout = 2000
+        self.VI.chunk_size = 1024000
         self.write('FORM:DATA REAL, 64')
         self.values_format.is_binary = True
         self.values_format.datatype = 'd'  # float 64 bits
-        self.values_format.is_big_endian = False
+        self.values_format.is_big_endian = True
         self.Ch1 = Channel(self, 1)
-        #  self.Ch2 = Channel(self, 2)
+        # self.Ch2 = Channel(self, 2)
 
     def query(self, command):
         # Remove \n terminations by software
         returnQ = super().query(command)
         return returnQ.strip('\n')
+
+    @property
+    def auxiliar_voltage_output1(self):
+        return self.query_float('CONT:AUX:OUTP1:VOLT?')
+
+    @auxiliar_voltage_output1.setter
+    def auxiliar_voltage_output1(self, newVoltage):
+        self.write('CONT:AUX:OUTP1:VOLT %0.3f' % newVoltage)
+
+    @property
+    def auxiliar_voltage_output2(self):
+        return self.query_float('CONT:AUX:OUTP2:VOLT?')
+
+    @auxiliar_voltage_output2.setter
+    def auxiliar_voltage_output2(self, newVoltage):
+        self.write('CONT:AUX:OUTP2:VOLT %0.3f' % newVoltage)
 
 
 class Channel(_InstrumentChild):
@@ -52,7 +69,7 @@ class Channel(_InstrumentChild):
             self.ID = 'Ch%d' % self.number
         else:
             self.ID = ID
-        self.write('CONF:CHAN%d:STAT ON' % self.number)
+        # self.write('CONF:CHAN%d:STAT ON' % self.number)
 
     @property
     def number(self):
@@ -60,7 +77,7 @@ class Channel(_InstrumentChild):
 
     @property
     def traces(self):
-        TrcNames = self.query('CONF:TRAC:CAT?').strip('\'').split(',')[1::2]
+        TrcNames = self.query('CALC:PAR:CAT:EXT?').strip('\"').split(',')[0::2]
         vTraces = []
         for trN in TrcNames:
             tr = Trace(self, trN)
@@ -75,7 +92,7 @@ class Channel(_InstrumentChild):
     @bandwidth.setter
     def bandwidth(self, newBW):
         self.write('SENS%(Ch)d:BWID %(BW)0.9E' %
-                   {'Ch':self.Number, 'BW':newBW})
+                   {'Ch': self.Number, 'BW': newBW})
 
     def SetSweep(self, start, stop, np, na=None):
         self.write('SENS%(Ch)d:SWE:TYPE LIN' %
@@ -119,23 +136,27 @@ class Channel(_InstrumentChild):
         self.write('SENS%(Ch)d:SWE:TYPE SEGM' %
                    {'Ch':self.number})
 
-
     def getSTIM(self):
-        return self.query_values('CALC%(Ch)d:DATA:STIM?' % {'Ch': self.number})
+        return self.query_values('CALC:MEAS:X?')
 
     def INIT(self):
         while True:
-            self.write('INIT%(Ch)d:IMM' % {'Ch': self.number})
-            if self.query('SYST:ERR:ALL?') == '0,"No error"':
+            if 'No error' in self.query('SYST:ERR?'):
                 break
+        while True:
+            self.write('INIT%(Ch)d:IMM' % {'Ch': self.number})
+            if 'No error' in self.query('SYST:ERR?'):
+                break
+            else:
+                _time.sleep(0.5)
 
 
 class Trace(_InstrumentChild):
     def __init__(self, parent, Name='Auto'):
         super().__init__(parent)
         self.name = Name
-        self._ChNumber = self.query_int('CONF:TRAC:CHAN:NAME:ID? \'%s\''
-                                        % Name)
+        self._ChNumber = 1
+        # self.query_int('CONF:TRAC:CHAN:NAME:ID? \'%s\'' % Name)
 
     @property
     def channel_number(self):
@@ -153,8 +174,7 @@ class Trace(_InstrumentChild):
             averCount = 1
         for i in range(averCount):
             self.parent.INIT()
-            while self.query('CALC%(Ch)d:DATA:NSW:COUN?' % {'Ch': ChN}) == '0':
-                _time.sleep(0.01)
+            self.query('*OPC?')
 
     def getFDAT(self, New=False):
         '''
@@ -164,9 +184,12 @@ class Trace(_InstrumentChild):
         ChN = self.channel_number
         self.write('CALC%(Ch)d:PAR:SEL \'%(N)s\'' %
                    {'Ch': ChN, 'N': self.name})
+        MeasN = self.query_int('CALC%(Ch)d:PAR:MNUM?' %
+                               {'Ch': ChN})
         if New:
             self.getNewData()
-        return self.query_values('CALC%(Ch)d:DATA? FDAT' % {'Ch': ChN})
+        return self.query_values('CALC%(Ch)d:MEAS%(MeasN)d:DATA:FDAT?' 
+                                 % {'Ch': ChN, 'MeasN': MeasN})
 
     def getSDAT(self, New=False):
         '''
@@ -177,9 +200,19 @@ class Trace(_InstrumentChild):
         ChN = self.channel_number
         self.write('CALC%(Ch)d:PAR:SEL \'%(N)s\'' %
                    {'Ch': ChN, 'N': self.name})
+        MeasN = self.query_int('CALC%(Ch)d:PAR:MNUM?' %
+                               {'Ch': ChN})
         if New:
             self.getNewData()
-        SDAT = self.query_values('CALC%(Ch)d:DATA? SDAT' % {'Ch': ChN})
+        try:
+            _time.sleep(0.05)
+            SDAT = self.query_values('CALC%(Ch)d:MEAS%(MeasN)d:DATA:SDATA?' 
+                                     % {'Ch': ChN, 'MeasN': MeasN})
+        except:
+            self.query('*OPC?')
+            _time.sleep(0.05)
+            SDAT = self.query_values('CALC%(Ch)d:MEAS%(MeasN)d:DATA:SDATA?' 
+                                     % {'Ch': ChN, 'MeasN': MeasN})
         return SDAT[::2] + 1.0j*SDAT[1::2]
 
     def SaveSData(self, fileName, New=False):

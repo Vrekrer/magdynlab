@@ -38,59 +38,28 @@ class VNA_FMR(object):
     def __init__(self):
         logFile = os.path.expanduser('~/MagDynLab.log')
         PowerSource = magdynlab.instruments.KEPCO_BOP(ResourceName='GPIB0::6::INSTR', logFile=logFile)
-        Voltmeter = magdynlab.instruments.VrekrerVoltMeter(ResourceName=None, logFile=logFile)
         VNA = magdynlab.instruments.RS_VNA_Z(ResourceName='TCPIP::192.168.13.2::INSTR', logFile=logFile)
 
         self.VNAC = magdynlab.controllers.VNA_Controler(VNA)
-        self.FC = magdynlab.controllers.FieldControlerDriven(PowerSource, Voltmeter)
+        self.FC = magdynlab.controllers.FieldControler(PowerSource)
         self.FC.Kepco.Voltage = 15
 
-        # We store the raw S parameters in this Collection
+        # We store the raw wave quantities in this Collection
         self.DataCollection = []
-        for i in range(4):
+        for i in range(3):
             D = magdynlab.data_types.Data3D()
             self.DataCollection.append(D)
 
         # This is used to plot
         self.DataPlot = magdynlab.data_types.Data3D()
 
-        self.traceNumbers = [0, 1, 2, 3]
+        self.traceNumbers = [0, 1, 2]
 
         self.SaveFormat = 'npy'
         self.Info = ''
 
-    def Correct_Traces(self):
-        for tr in self.VNAC.VNA.Ch1.traces:
-            self.VNAC.VNA.write('CALC1:PAR:DEL %s' % tr.name)
-
-        self.VNAC.VNA.write('CALC1:PAR:DEF \'Trc1\', S11')
-        self.VNAC.VNA.write('CALC1:FORM MLIN')
-        self.VNAC.VNA.write('CALC1:PAR:DEF \'Trc2\', S22')
-        self.VNAC.VNA.write('CALC1:FORM MLIN')
-        self.VNAC.VNA.write('CALC1:PAR:DEF \'Trc3\', S12')
-        self.VNAC.VNA.write('CALC1:FORM MLIN')
-        self.VNAC.VNA.write('CALC1:PAR:DEF \'Trc4\', S21')
-        self.VNAC.VNA.write('CALC1:FORM MLIN')
-
-        self.VNAC.VNA.write('DISP:WIND1:TRAC1:FEED \'Trc1\'')
-        self.VNAC.VNA.write('DISP:WIND1:TRAC2:FEED \'Trc2\'')
-        self.VNAC.VNA.write('DISP:WIND1:TRAC3:FEED \'Trc3\'')
-        self.VNAC.VNA.write('DISP:WIND1:TRAC4:FEED \'Trc4\'')
-
-        self.VNAC.VNA.write('DISP:WIND1:TRAC1:Y:PDIV 0.11')
-        self.VNAC.VNA.write('DISP:WIND1:TRAC2:Y:PDIV 0.11')
-        self.VNAC.VNA.write('DISP:WIND1:TRAC3:Y:PDIV 0.11')
-        self.VNAC.VNA.write('DISP:WIND1:TRAC4:Y:PDIV 0.11')
-
-        self.VNAC.VNA.write('DISP:WIND1:TRAC1:Y:RPOS 50')
-        self.VNAC.VNA.write('DISP:WIND1:TRAC2:Y:RPOS 50')
-        self.VNAC.VNA.write('DISP:WIND1:TRAC3:Y:RPOS 50')
-        self.VNAC.VNA.write('DISP:WIND1:TRAC4:Y:RPOS 50')
-
-        self.VNAC.VNA.write('DISP:WIND1:TRAC1:Y:RLEV 0.5')
-        self.VNAC.VNA.write('DISP:WIND1:TRAC2:Y:RLEV 0.5')
-        self.VNAC.VNA.write('DISP:WIND1:TRAC3:Y:RLEV 0.5')
-        self.VNAC.VNA.write('DISP:WIND1:TRAC4:Y:RLEV 0.5')
+    def SetTraces(self):
+        self.VNAC.set_traces_WaveQuantities()
 
     def _MeasureSpectra(self):
         Ss = []
@@ -102,11 +71,10 @@ class VNA_FMR(object):
         return Ss
 
     def _SaveData(self, file_name):
-        numpy.savez_compressed(file_name + '.VNA_Raw',
-                               S11=numpy.nan_to_num(self.DataCollection[0].dataArray),
-                               S22=numpy.nan_to_num(self.DataCollection[1].dataArray),
-                               S12=numpy.nan_to_num(self.DataCollection[2].dataArray),
-                               S21=numpy.nan_to_num(self.DataCollection[3].dataArray),
+        numpy.savez_compressed(file_name + '.VNA_P_Raw',
+                               a1=numpy.nan_to_num(self.DataCollection[0].dataArray),
+                               b1=numpy.nan_to_num(self.DataCollection[1].dataArray),
+                               b2=numpy.nan_to_num(self.DataCollection[2].dataArray),
                                Ref=self.Refs,
                                h=self.DataCollection[0].x,
                                f=self.DataCollection[0].y,
@@ -114,30 +82,36 @@ class VNA_FMR(object):
 
     def SaveRef(self, file_name):
         self.Refs = numpy.array(self._MeasureSpectra())
-        numpy.savez_compressed(file_name + '.VNA_Ref',
+        numpy.savez_compressed(file_name + '.VNA_P_Ref',
                                Ref=self.Refs,
                                f=self.VNAC.frequencies,
                                Info=self.Info)
 
     def PlotData(self, i=None):
-        RefS11 = self.Refs[0]
-        RefS12 = self.Refs[2]
+        Ref_Pa1 = numpy.abs(self.Refs[0])**2/50
+        Ref_Pb1 = numpy.abs(self.Refs[1])**2/50
+        Ref_Pb2 = numpy.abs(self.Refs[2])**2/50
 
-        Pr = 1 - numpy.abs(RefS11)**2 - numpy.abs(RefS12)**2
+        Ppr = (Ref_Pa1 - Ref_Pb1 - Ref_Pb2) / (Ref_Pa1 - Ref_Pb1)
 
         # Update only last column
         if i is not None:
-            LastS11 = self.DataCollection[0].dataArray[:, i]
-            LastS12 = self.DataCollection[2].dataArray[:, i]
+            LastPa1 = numpy.abs(self.DataCollection[0].dataArray[:, i])**2/50
+            LastPb1 = numpy.abs(self.DataCollection[1].dataArray[:, i])**2/50
+            LastPb2 = numpy.abs(self.DataCollection[2].dataArray[:, i])**2/50
 
-            Pm = 1 - numpy.abs(LastS11)**2 - numpy.abs(LastS12)**2
-            self.DataPlot.addColumn(Pm - Pr)
+            Pim = LastPa1 - LastPb1
+            Ppm = (Pim - LastPb2 - Ppr*Pim)/Pim
+            self.DataPlot.addColumn(Ppm)
         else:
-            S11 = self.DataCollection[0].dataArray
-            S12 = self.DataCollection[2].dataArray
+            LastPa1 = numpy.abs(self.DataCollection[0].dataArray)**2/50
+            LastPb1 = numpy.abs(self.DataCollection[1].dataArray)**2/50
+            LastPb2 = numpy.abs(self.DataCollection[2].dataArray)**2/50
 
-            Pm = 1 - numpy.abs(S11)**2 - numpy.abs(S12)**2
-            self.DataPlot.dataArray = Pm-Pr[:, None]
+            Pim = LastPa1 - LastPb1
+            Ppm = (Pim - LastPb2 - Ppr[:, None]*Pim)/Pim
+
+            self.DataPlot.dataArray = Ppm
         MyPlot(self.DataPlot)
 
     @ThD.as_thread
@@ -153,7 +127,7 @@ class VNA_FMR(object):
         # Loop for each field
         for i, h in enumerate(fields):
 
-            self.FC.setField(h, Tol=0.25, FldStep=0.5)
+            self.FC.setField(h)
             time.sleep(hold_time)
             Ss = self._MeasureSpectra()
             for j, S in enumerate(Ss):

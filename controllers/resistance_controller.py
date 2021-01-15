@@ -3,7 +3,7 @@
 # Author: Diego González Chávez
 # email : diegogch@cbpf.br / diego.gonzalez.chavez@gmail.com
 #
-# Resistance Controler
+# Resistance Controller
 #
 # TODO:
 # Make documentation
@@ -11,12 +11,12 @@
 import time
 import numpy
 
-__all__ = ['ResistanceControler']
+__all__ = ['ResistanceController']
 
 
-class ResistanceControler(object):
+class ResistanceController(object):
 
-#    Controlador de SourceMeter para medidas de resistencia
+#    Controllador de SourceMeter para medidas de resistencia
 
     def __init__(self, source_meter):
         self.SM = source_meter

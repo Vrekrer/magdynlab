@@ -5,13 +5,14 @@
 import numpy
 import time
 import magdynlab.instruments
-import magdynlab.controlers
+import magdynlab.controllers
 import magdynlab.data_types
 import threading_decorators as ThD
 import matplotlib.pyplot as plt
+import os
 
 @ThD.gui_safe
-def MyPlot(Data):
+def Plot_MxH(Data):
     f = plt.figure('AGFM MxH', (5,4))
     
     if not(f.axes):
@@ -23,17 +24,16 @@ def MyPlot(Data):
         ax.set_xlim(*Data.xlim)
         ax.set_ylim(*Data.ylim)
     line = ax.lines[-1]
-    line.set_data(Data.X, Data.Y)
+    line.set_data(Data['h'], Data['m'])
     ax.set_xlabel('Field (Oe)')
     ax.set_ylabel('m')
     ax.grid(True)
 
     f.tight_layout()
     f.canvas.draw()
-    f.savefig('MxH.png')
 
 @ThD.gui_safe
-def FreqPlot(Data):
+def Plot_Freq(Data):
     f = plt.figure('AGFM Amp vs Freq', (5,4))
     
     if not(f.axes):
@@ -45,42 +45,47 @@ def FreqPlot(Data):
         ax.set_xlim(*Data.xlim)
         ax.set_ylim(*Data.ylim)
     line = ax.lines[-1]
-    line.set_data(Data.X, Data.Y)
-    ax.set_xlabel('Freq')
+    line.set_data(Data['f'], Data['Amp'])
+    ax.set_xlabel('Freq (Hz)')
     ax.set_ylabel('Amp')
     ax.grid(True)
 
     f.tight_layout()
     f.canvas.draw()
-    f.savefig('MxF.png')
-    
-class MxH(object):
-    def __init__(self):
-        PowerSource = magdynlab.instruments.KEPCO_BOP_blind(GPIB_Address=7)
-        LockIn = magdynlab.instruments.SRS_SR830(GPIB_Address=22)
 
-        self.FC = magdynlab.controlers.FieldControler(PowerSource)
-        self.VC = magdynlab.controlers.LockIn_Mag_Controler(LockIn)
+class MxH(object):
+    def __init__(self, ResouceNames={}):
+        logFile = os.path.expanduser('~/MagDynLab.log')
+        
+        defaultRN = dict(RN_Kepco = 'GPIB0::6::INSTR',
+                         RN_LockIn = 'GPIB0::25::INSTR')
+        defaultRN.update(ResouceNames)
+        RN_Kepco = defaultRN['RN_Kepco']
+        RN_LockIn = defaultRN['RN_LockIn']
+        
+        PowerSource = magdynlab.instruments.KEPCO_BOP(ResourceName=RN_Kepco,
+                                                      logFile=logFile)
+        LockIn = magdynlab.instruments.SRS_SR830(ResourceName=RN_LockIn,
+                                                 logFile=logFile)
+
+        self.FC = magdynlab.controllers.FieldController(PowerSource)
+        self.VC = magdynlab.controllers.LockIn_Mag_Controller(LockIn)
 
         #This is used to plot
-        self.Data = magdynlab.data_types.Data2D()
-        self.DataFreq = magdynlab.data_types.Data2D()
+        #Experimental/plot data
+        self.Data = magdynlab.data_types.DataContainer()
+        self.Data.file_id = '.mxh' #m vs h
         
-    def _SaveData(self, file_name):
-        self.Data.save(file_name)
-
-    def PlotData(self, i = None):
-        MyPlot(self.Data)
-
-    def PlotFreq(self):
-        FreqPlot(self.DataFreq)
+        self.DataFreq = magdynlab.data_types.DataContainer()
+        self.DataFreq.file_id = '.res_curve' #a vs f
 
     @ThD.as_thread
-    def FreqCurve(self, crvf = [], file_name = None, TurnOff = False):
-        freqs = numpy.asarray(crvf)
+    def FreqCurve(self, freqs, file_name=None, TurnOff=False):
+        freqs = numpy.asarray(freqs)
 
         #Initialize data objects
-        self.DataFreq.reset()
+        self.DataFreq['f'] = freqs
+        self.DataFreq['Amp'] = numpy.zeros_like(freqs) + numpy.nan
         self.DataFreq.xlim = [freqs.min(), freqs.max()]
         sen = self.VC.LockIn.SEN * 1.5 * self.VC.emu_per_V
         self.DataFreq.ylim = [0, sen]
@@ -93,22 +98,24 @@ class MxH(object):
             if a >= 0.9 * self.VC.LockIn.SEN:
                 self.VC.LockIn.SEN = 3*self.VC.LockIn.SEN
                 a = self.VC.getAmplitude() 
-            self.DataFreq.addPoint(f, a*self.VC.emu_per_V)
-            FreqPlot(self.DataFreq)
+            self.DataFreq['Amp'][i] = a*self.VC.emu_per_V
+            Plot_Freq(self.DataFreq)
             ThD.check_stop()
             
         if file_name is not None:
-            self._SaveData(file_name)
+            self.DataFreq.savetxt(file_name, keys=['f', 'Amp'])
         if TurnOff:
             self.FC.TurnOff()
         self.FC.Kepco.BEEP()
 
     @ThD.as_thread
-    def Measure(self, crv = [], file_name = None, meas_opts = [10, 1, 0.1]):
-        fields = numpy.asarray(crv)
+    def Measure(self, fields, file_name=None, meas_opts=[10, 1, 0.1]):
+        fields = numpy.asarray(fields)
         
-        # Initialize data objects
-        self.Data.reset()
+        #Initialize data objects
+        self.Data['h'] = fields
+        self.Data['m'] = numpy.zeros_like(fields) + numpy.nan
+        self.Data['error_m'] = numpy.zeros_like(fields) + numpy.nan
         self.Data.xlim = [fields.min(), fields.max()]
         sen = self.VC.LockIn.SEN * 1.5 * self.VC.emu_per_V
         self.Data.ylim = [-sen, sen]
@@ -121,13 +128,16 @@ class MxH(object):
             while abs(h - self.FC.getField()) > 50:
                 self.FC.setField(h)
             #time.sleep(0.5)
-            m, sm = self.VC.getMagnetization(n = n_pts, iniDelay = iniDelay, measDelay = measDelay)
-            self.Data.addPoint(h, m)
-            MyPlot(self.Data)
+            m, sm = self.VC.getMagnetization(n=n_pts, 
+                                             iniDelay=iniDelay, 
+                                             measDelay=measDelay)
+            self.Data['m'][i] = m
+            self.Data['error_m'][i] = sm
+            Plot_MxH(self.Data)
             ThD.check_stop()
             
         if file_name != None:
-            self._SaveData(file_name)
+            self.Data.savetxt(file_name, keys=['h', 'm', 'error_m'])
         self.FC.TurnOff()
         self.FC.Kepco.BEEP()
 

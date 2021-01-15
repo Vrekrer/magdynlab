@@ -8,12 +8,12 @@
 # TODO:
 # Make documentation
 
-__all__ = ['IA_Controler']
+__all__ = ['IA_Controller']
 
 
-class IA_Controler(object):
+class IA_Controller(object):
     '''
-    Impedance Analizer controler
+    Impedance Analizer controller
     '''
 
     def __init__(self, IA_instrument):

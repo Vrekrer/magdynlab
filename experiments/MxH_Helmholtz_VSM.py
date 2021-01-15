@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 
-#MxH_Helmholtz_AGFM
+#MxH_Helmholtz_VSM
 
 import numpy
 import time
 import magdynlab.instruments
-import magdynlab.controlers
+import magdynlab.controllers
 import magdynlab.data_types
 import threading_decorators as ThD
 import matplotlib.pyplot as plt
+
 
 @ThD.gui_safe
 def MyPlot(Data):
@@ -19,7 +20,7 @@ def MyPlot(Data):
     ax = f.axes[0]
     #ax.clear()
     if not(ax.lines):
-        ax.plot([],[],'b.-')
+        ax.plot([], [], 'b.-')
         ax.set_xlim(*Data.xlim)
         ax.set_ylim(*Data.ylim)
     line = ax.lines[-1]
@@ -32,6 +33,7 @@ def MyPlot(Data):
     f.canvas.draw()
     f.savefig('MxH.png')
 
+
 @ThD.gui_safe
 def FreqPlot(Data):
     f = plt.figure('VSM Amp vs Freq', (5,4))
@@ -41,7 +43,7 @@ def FreqPlot(Data):
     ax = f.axes[0]
     #ax.clear()
     if not(ax.lines):
-        ax.plot([],[],'b.-')
+        ax.plot([], [], 'b.-')
         ax.set_xlim(*Data.xlim)
         ax.set_ylim(*Data.ylim)
     line = ax.lines[-1]
@@ -53,14 +55,21 @@ def FreqPlot(Data):
     f.tight_layout()
     f.canvas.draw()
     f.savefig('MxF.png')
-    
+
+
 class MxH(object):
     def __init__(self):
-        PowerSource = magdynlab.instruments.KEPCO_BOP(GPIB_Address=6)
-        LockIn = magdynlab.instruments.DSP_7265(GPIB_Address=12)
-
-        self.FC = magdynlab.controlers.FieldControler(PowerSource)
-        self.VC = magdynlab.controlers.LockIn_Mag_Controler(LockIn)
+        logFile = os.path.expanduser('~/MagDynLab.log')
+        PowerSource = magdynlab.instruments.KEPCO_BOP(
+            GPIB_Address=6,
+            logFile=logFile
+        )
+        LockIn = magdynlab.instruments.DSP_7265(
+            GPIB_Address=12,
+            logFile=logFile
+        )
+        self.FC = magdynlab.controllers.FieldControler(PowerSource)
+        self.VC = magdynlab.controllers.LockIn_Mag_Controler(LockIn)
 
         #This is used to plot
         self.Data = magdynlab.data_types.Data2D()
@@ -69,14 +78,14 @@ class MxH(object):
     def _SaveData(self, file_name):
         self.Data.save(file_name)
 
-    def PlotData(self, i = None):
+    def PlotData(self, i=None):
         MyPlot(self.Data)
 
     def PlotFreq(self):
         FreqPlot(self.DataFreq)
 
     @ThD.as_thread
-    def FreqCurve(self, crvf = [], file_name = None, TurnOff = False):
+    def FreqCurve(self, crvf=[], file_name=None, TurnOff=False):
         freqs = numpy.asarray(crvf)
 
         #Initialize data objects
@@ -104,7 +113,7 @@ class MxH(object):
         self.FC.Kepco.BEEP()
 
     @ThD.as_thread
-    def Measure(self, crv = [], file_name = None, meas_opts = [10, 1, 0.1]):
+    def Measure(self, crv=[], file_name=None, meas_opts=[10, 1, 0.1]):
         fields = numpy.asarray(crv)
         
         # Initialize data objects
@@ -121,7 +130,8 @@ class MxH(object):
             while abs(h - self.FC.getField()) > 50:
                 self.FC.setField(h)
             #time.sleep(0.5)
-            m, sm = self.VC.getMagnetization(n = n_pts, iniDelay = iniDelay, measDelay = measDelay)
+            m, sm = self.VC.getMagnetization(n=n_pts, iniDelay=iniDelay, 
+                                             measDelay=measDelay)
             self.Data.addPoint(h, m)
             MyPlot(self.Data)
             ThD.check_stop()
@@ -131,7 +141,7 @@ class MxH(object):
         self.FC.TurnOff()
         self.FC.Kepco.BEEP()
 
-    def Stop(self, TurnOff = True):
+    def Stop(self, TurnOff=True):
         print('Stoping...')
         self.FC.BEEP()
         self.Measure.stop()

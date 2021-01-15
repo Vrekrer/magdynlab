@@ -3,7 +3,7 @@
 # Author: Diego González Chávez
 # email : diegogch@cbpf.br / diego.gonzalez.chavez@gmail.com
 #
-# Magnetic Field controler
+# Magnetic Field controller
 #
 # TODO:
 # Make documentation
@@ -11,35 +11,32 @@
 import time
 import numpy
 
-__all__ = ['FieldControler']
+__all__ = ['FieldController_SM']
 
 
-class FieldControler(object):
+class FieldController_SM(object):
     '''
-    Magnetic field controler
+    Magnetic field controller
     
-    to be used with a Kepco BOP power source driving coreless coils
+    to be used with a KEITHLEY 2400 source meter driving coreless coils
     '''
 
-    def __init__(self, Kepco_instrument):
-        self.Kepco = Kepco_instrument
+    def __init__(self, SourceMeter_Instruments):
+        self.SM = SourceMeter_Instruments
 
         self.HperOut = 16.952  # Oe por I de la salida (aprox)
         self.MaxHRate = 30.0  # Rate H maximo en Oe/s
         self.InToH = 16.952  # Oe por valor de entrada medidos (Oe/A)
 
-        self.Kepco.CurrentMode()
-        self.Kepco.voltage = 20.0
-        self.Kepco.SetRange('Full')
+        self.SM.sense_mode = '4-Wires'
+        self.SM.output = 'OFF'
+        self.SM.source_function = 'Current'
+        self.SM.source_value = 0
+        self.SM.sense_function = 'Voltage'
+        self.SourceCurrentLimit = 2
 
     def __del__(self):
         pass
-
-    def ResetKepco(self):
-        self.Kepco.current = 0
-        self.Kepco.CurrentMode()
-        self.Kepco.voltage = 20.0
-        self.Kepco.SetRange('Full')
 
     def getField(self, Res='Fast', Unit='Oe'):
         '''
@@ -55,26 +52,27 @@ class FieldControler(object):
             'Oe' : Field in Oe (default)
             'A/m' : Field in A/m
         '''
-        vIn = self.Kepco.current
+        vIn = self.SM.source_value
         if Unit == 'Oe':
             return self.InToH * vIn
         elif Unit == 'A/m':
             return self.InToH * vIn * 1.0E3 / (4 * numpy.pi)
 
     def setField(self, Fld, Alg='Fast'):
+        self.SM.output = 'ON'
         '''Set magnetic field'''
         # TODO self.log('Setting field : %.1f Oe ... ' % Fld, EOL = '')
         InstTime = 0.01  # Tiempo (en s) aprox en establecer y leer el GPIB
 
         targetIn = Fld / self.InToH
-        actualIn = self.Kepco.current
+        actualIn = self.SM.source_value
         vInErr = numpy.abs(targetIn - actualIn)
 
         dVOut = (targetIn - actualIn)  # valor que debe variar la salida
         # Rampa variando dVolt
 
         vRate = self.MaxHRate / self.InToH  # Taza de variacion en Vin/s
-        vIni = self.Kepco.current
+        vIni = self.SM.source_value
 
         vFin = vIni + dVOut
         nPoints = 400
@@ -88,22 +86,24 @@ class FieldControler(object):
         vPoints = numpy.linspace(vIni, vFin, nPoints)
         self.vPoints = vPoints
         for v in vPoints:
-            self.Kepco.current = v
+            self.SM.source_value = v
             time.sleep(dt)
         # time.sleep(0.5)
         # TODO self.log('Done.', [125,125,125])
 
     def TurnOff(self):
         # TODO self.log('Turning field off ... ', EOL = '')
-        vIni = self.Kepco.current
+        vIni = self.SM.source_value
         vPoints = numpy.linspace(vIni, 0, 100)
         dt = numpy.abs(vIni) * self.HperOut / (self.MaxHRate * 100.0)
 
         for v in vPoints:
-            self.Kepco.current = v
+            self.SM.source_value = v
             time.sleep(dt)
         # self.log('Done.', [125,125,125])
+        
+        self.SM.output = 'OFF'
 
     def BEEP(self, t_sleep=0.1):
-        self.Kepco.BEEP()
+        self.SM.BEEP()
         time.sleep(t_sleep)

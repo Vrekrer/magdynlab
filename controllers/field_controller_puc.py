@@ -3,7 +3,7 @@
 # Author: Diego González Chávez
 # email : diegogch@cbpf.br / diego.gonzalez.chavez@gmail.com
 #
-# Magnetic Field controler
+# Magnetic Field controller
 #
 # TODO:
 # Make documentation
@@ -11,10 +11,10 @@
 import time
 import numpy
 
-__all__ = ['FieldControlerPUC']
+__all__ = ['FieldControllerPUC']
 
 
-class FieldControlerPUC(object):
+class FieldControllerPUC(object):
 
 #    Controlador de Campo Magnetico
 

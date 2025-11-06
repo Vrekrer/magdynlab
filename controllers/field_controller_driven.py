@@ -77,8 +77,8 @@ class FieldControllerDriven(object):
         setCurrent = self.Kepco.current
         LoopTime = time.time() - t0
 
-        while (sng * (Fld - self.getField(delay=0)) > 15*self.field_mult):
-            setCurrent += sng * 2.0*FldStep/self.HperOut
+        while (sng * (Fld - self.getField(delay=0)) > 5*self.field_mult):
+            setCurrent += sng * 10.0*FldStep/self.HperOut
             self.Kepco.current = setCurrent
             time.sleep(numpy.max([FldStep/self.MaxHRate - LoopTime, 0]))
 
@@ -87,7 +87,7 @@ class FieldControllerDriven(object):
         setCurrent = self.Kepco.current
         LoopTime = time.time() - t0
 
-        while (sng * (Fld - self.getField(delay=0.2)) > Tol):
+        while (sng * (Fld - self.getField(delay=0.0)) > Tol):
             setCurrent += sng * FldStep/self.HperOut
             self.Kepco.current = setCurrent
             time.sleep(numpy.max([FldStep/self.MaxHRate - LoopTime, 0]))

@@ -143,7 +143,7 @@ class PNA_FMR_1P(object):
         Plot_ColorMap(self.Data)
 
     @ThD.as_thread
-    def Measure(self, fields, file_name, hold_time=0.0):
+    def Measure(self, fields, file_name, hold_time=0.0, turnOff=True):
 
         Data = self.Data
 
@@ -164,12 +164,13 @@ class PNA_FMR_1P(object):
 
         if file_name is not None:
             Data.save(file_name)
-        self.FC.TurnOff()
+        if turnOff:
+            self.FC.TurnOff()
         self.FC.Kepco.BEEP()
 
     @ThD.as_thread
     def Measure_dPdH(self, fields, freq, file_name, 
-                     dH=2,  average_factor=10, repetitions=2,
+                     dH=2,  average_factor=10, repetitions=1,
                      hold_time=0.0, dH_hold_time=0.01):
 
         Data = self.Data_dPdH
@@ -206,12 +207,12 @@ class PNA_FMR_1P(object):
                 time.sleep(dH_hold_time)
                 for av_i in range(average_factor):
                     n_i = r_i*average_factor + av_i
-                    Data['S11'][hi,0,n_i] = self.VNAC.getSData(0, True)
+                    Data['S11'][hi,0,n_i] = self.VNAC.getSData(0, True)[0]
                 self.FC.Kepco.current = i_neg
                 time.sleep(dH_hold_time)
                 for av_i in range(average_factor):
                     n_i = r_i*average_factor + av_i
-                    Data['S11'][hi,1,n_i] = self.VNAC.getSData(0, True)
+                    Data['S11'][hi,1,n_i] = self.VNAC.getSData(0, True)[0]
                 ThD.check_stop()
                 
                 PAbs_hi = 1 - numpy.abs(Data['S11'][hi])**2
@@ -265,18 +266,18 @@ class PNA_FMR_1P(object):
         i_neg = i0 + Data['dH'][-1]/self.FC.HperOut
 
         for r_i in range(repetitions):
-            if dH_source is 'Solenoid':
+            if dH_source == 'Solenoid':
                 self.FC.Kepco.current = i_pos
-            elif dH_source is 'Auxiliar':
+            elif dH_source == 'Auxiliar':
                 self.VNAC.VNA.auxiliar_voltage_output1 = Data['dH'][0]
             time.sleep(dH_hold_time)
             for av_i in range(average_factor):
                 n_i = r_i*average_factor + av_i
                 Data['S11'][:,0,n_i] = self.VNAC.getSData(0, True)
 
-            if dH_source is 'Solenoid':
+            if dH_source == 'Solenoid':
                 self.FC.Kepco.current = i_neg
-            elif dH_source is 'Auxiliar':
+            elif dH_source == 'Auxiliar':
                 self.VNAC.VNA.auxiliar_voltage_output1 = Data['dH'][-1]
             time.sleep(dH_hold_time)
             for av_i in range(average_factor):
@@ -287,14 +288,14 @@ class PNA_FMR_1P(object):
             PAbs = 1 - numpy.abs(Data['S11'])**2
             P_pos = numpy.nanmean(PAbs[:,0,:], axis=-1)
             P_neg = numpy.nanmean(PAbs[:,1,:], axis=-1)
-            Data['dP/dH'] = (P_pos - P_neg)/(2*(Data['dH'][0]-Data['dH'][-1]))
+            Data['dP/dH'] = (P_pos - P_neg)/((Data['dH'][0]-Data['dH'][-1]))
             Plot_dPdH(Data)
         ThD.check_stop()
         print('Done!')
         
-        if dH_source is 'Solenoid':
+        if dH_source == 'Solenoid':
             self.FC.Kepco.current = i0
-        elif dH_source is 'Auxiliar':
+        elif dH_source == 'Auxiliar':
             self.VNAC.VNA.auxiliar_voltage_output1 = 0
 
         if file_name is not None:
@@ -312,7 +313,6 @@ class PNA_FMR_1P(object):
         elif 'Auxiliar' in Data['Mode']:
             dH_source = 'Auxiliar'
 
-        field = Data['h']
         dH  = Data['dH']
 
         data_shape = (len(Data['f']), 2, average_factor*repetitions)
@@ -327,25 +327,24 @@ class PNA_FMR_1P(object):
 
         print('*** Improving dP/dH fixed field***')
         print('\n'.join(extra_info))
-        
-        self.FC.setField(field)
+
         i0 = self.FC.Kepco.current
         i_pos = i0 + Data['dH'][0]/self.FC.HperOut
-        i_neg = i0 - Data['dH'][-1]/self.FC.HperOut
+        i_neg = i0 + Data['dH'][-1]/self.FC.HperOut
 
         for r_i in range(repetitions):
-            if dH_source is 'Solenoid':
+            if dH_source == 'Solenoid':
                 self.FC.Kepco.current = i_pos
-            elif dH_source is 'Auxiliar':
+            elif dH_source == 'Auxiliar':
                 self.VNAC.VNA.auxiliar_voltage_output1 = Data['dH'][0]
             time.sleep(dH_hold_time)
             for av_i in range(average_factor):
                 n_i = r_i*average_factor + av_i + offset
                 Data['S11'][:,0,n_i] = self.VNAC.getSData(0, True)
 
-            if dH_source is 'Solenoid':
+            if dH_source == 'Solenoid':
                 self.FC.Kepco.current = i_neg
-            elif dH_source is 'Auxiliar':
+            elif dH_source == 'Auxiliar':
                 self.VNAC.VNA.auxiliar_voltage_output1 = Data['dH'][-1]
             time.sleep(dH_hold_time)
             for av_i in range(average_factor):
@@ -356,14 +355,14 @@ class PNA_FMR_1P(object):
             PAbs = 1 - numpy.abs(Data['S11'])**2
             P_pos = numpy.nanmean(PAbs[:,0,:], axis=-1)
             P_neg = numpy.nanmean(PAbs[:,1,:], axis=-1)
-            Data['dP/dH'] = (P_pos - P_neg)/(2*(Data['dH'][0]-Data['dH'][-1]))
+            Data['dP/dH'] = (P_pos - P_neg)/((Data['dH'][0]-Data['dH'][-1]))
             Plot_dPdH(Data)
         ThD.check_stop()
         print('Done!')
         
-        if dH_source is 'Solenoid':
+        if dH_source == 'Solenoid':
             self.FC.Kepco.current = i0
-        elif dH_source is 'Auxiliar':
+        elif dH_source == 'Auxiliar':
             self.VNAC.VNA.auxiliar_voltage_output1 = 0
 
         if file_name is not None:

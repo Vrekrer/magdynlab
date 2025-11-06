@@ -9,7 +9,7 @@
 # TODO:
 # Make documentation
 
-import visa
+import pyvisa
 import datetime
 import os
 import numpy
@@ -25,9 +25,9 @@ def findResource(search_string,
                  open_delay=2,
                  **kwargs):
     if os.name == 'nt':
-        rm = visa.ResourceManager()
+        rm = pyvisa.ResourceManager()
     else:
-        rm = visa.ResourceManager('@py')
+        rm = pyvisa.ResourceManager('@py')
     for resource in set(rm.list_resources()).difference(Resources_in_use):
         if filter_string in resource:
             VI = rm.open_resource(resource, **kwargs)
@@ -72,15 +72,14 @@ class InstrumentBase(object):
 
     def __init__(self, ResourceName, logFile=None, **kargs):
         if os.name == 'nt':
-            rm = visa.ResourceManager()
+            rm = pyvisa.ResourceManager()
         else:
-            rm = visa.ResourceManager('@py')
+            rm = pyvisa.ResourceManager('@py')
         self.VI = rm.open_resource(ResourceName, **kargs)
         Resources_in_use.append(ResourceName)
         self._IDN = self.VI.resource_name
-        if logFile is None:
-            self._logFile = None
-        else:
+        self._logFile = None
+        if logFile is not None:
             if not os.path.isfile(logFile):
                 with open(logFile, 'w') as log:
                     log.write('MagDynLab Instruments LogFile\n')

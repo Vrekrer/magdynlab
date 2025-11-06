@@ -11,6 +11,8 @@
 # Make documentation
 
 import time as _time
+import numpy as _np
+
 import pyvisa.constants as _pvc
 from .instruments_base import InstrumentBase as _InstrumentBase
 from .instruments_base import findResource

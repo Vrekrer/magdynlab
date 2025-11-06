@@ -11,6 +11,7 @@
 # Make documentation
 
 import time as _time
+import numpy as np
 from .instruments_base import InstrumentBase as _InstrumentBase
 from .instruments_base import InstrumentChild as _InstrumentChild
 
@@ -25,8 +26,9 @@ class KEYSIGHT_E4990A(_InstrumentBase):
             ResourceName = 'GPIB%d::%d::INSTR' % (GPIB_Device, GPIB_Address)
         super().__init__(ResourceName, logFile)
         self._IDN = 'KEYSIGTH E4990A'
-        self.VI.write_termination = None
-        self.VI.read_termination = None
+        self.VI.write_termination = '\n'
+        self.VI.read_termination = '\n'
+        self.VI.timeout = 10000
 
         self.write('*CLS')
         self.write('FORMat:DATA REAL')
@@ -62,11 +64,56 @@ class Channel(_InstrumentChild):
                    {'Ch': self.number, 'n': np})
 
     @property
+    def cw_frequency(self):
+        return self.query_float('SENS:FREQ?')
+
+    @cw_frequency.setter
+    def cw_frequency(self, val):
+        self.write('SENS:FREQ %0.8e' % val)
+
+    @property
+    def stimulus_direction(self):
+        return self.query('SENS:SWE:DIR?')
+
+    @stimulus_direction.setter
+    def stimulus_direction(self, val):
+        dir_str = {'up': 'UP',
+                   'UP': 'UP',
+                   '+1': 'UP',
+                   'dw': 'DOWN',
+                   'Down': 'DOWN',
+                   'DOWN': 'DOWN',
+                   '-1'  : 'DOWN'}.get(val, 'UP')
+        self.write('SENS:SWE:DIR %(dir)s' %
+                   {'dir': dir_str})
+        
+        
+    @property
     def fs(self):
         return self.getSTIM()
 
     def getSTIM(self):
-        return self.query_values('SENS%(Ch)d:FREQ:DATA?' % {'Ch': self.number})
+        sweep_type = self.query('SENS:SWE:TYPE?')
+        if sweep_type in ['BIAS', 'LBI']:
+            bias_mode = self.query('SOUR:BIAS:MODE?')
+            start = self.query_float('SOUR:BIAS:%(mode)s:STAR?' 
+                                      % {'mode':bias_mode})
+            stop = self.query_float('SOUR:BIAS:%(mode)s:STOP?' 
+                                     % {'mode':bias_mode})
+            pts = self.query_int('SENS:SWE:POIN?')
+            if sweep_type == 'BIAS':
+                stim = np.linspace(start, stop, pts)
+            elif sweep_type == 'LBI':
+                stim = np.geomspace(start, stop, pts)
+        elif sweep_type in ['LIN', 'LOG']:
+            stim = self.query_values('SENS:FREQ:DATA?')
+        else:
+            print('Not implemented for sweep type = %s' % sweep_type)
+            return None
+        if self.query('SENS:SWE:DIR?') == 'UP':
+            return stim
+        else:
+            return stim[::-1]
 
     @property
     def number(self):
@@ -150,9 +197,9 @@ class Trace(_InstrumentChild):
     def getNewData(self):
         ChN = self.channel_number
         self.write('TRIG:SOUR BUS')
-        averStat = self.query('SENS%(Ch)d:AVER:STAT?' % {'Ch': ChN})
+        averStat = self.query('CALC%(Ch)d:AVER:STAT?' % {'Ch': ChN})
         if averStat == '1':
-            averCount = self.query_int('SENS%(Ch)d:AVER:COUN?' % {'Ch': ChN})
+            averCount = self.query_int('CALC%(Ch)d:AVER:COUN?' % {'Ch': ChN})
             self.write('CALC%(Ch)d:AVER:CLE' % {'Ch': ChN})
         else:
             averCount = 1
@@ -168,8 +215,8 @@ class Trace(_InstrumentChild):
         accordingly to the selected trace format
         '''
         ChN = self.channel_number
-        self.write('CALC%(Ch)d:PAR%(Ch)d:SEL' %
-                   {'Ch': ChN, 'N': self._trcNum})
+        self.write('CALC%(Ch)d:PAR%(N)d:SEL' %
+                   {'Ch': ChN, 'N': self._trcNum+1})
         if New:
             self.getNewData()
         FDAT = self.query_values('CALC%(Ch)d:DATA:FDAT?' % {'Ch': ChN})
@@ -181,8 +228,8 @@ class Trace(_InstrumentChild):
         Real and imaginary part of each measurement point
         '''
         ChN = self.channel_number
-        self.write('CALC%(Ch)d:PAR%(Ch)d:SEL' %
-                   {'Ch': ChN, 'N': self._trcNum})
+        self.write('CALC%(Ch)d:PAR%(N)d:SEL' %
+                   {'Ch': ChN, 'N': self._trcNum+1})
         if New:
             self.getNewData()
         RDAT = self.query_values('CALC%(Ch)d:DATA:RDAT?' % {'Ch': ChN})

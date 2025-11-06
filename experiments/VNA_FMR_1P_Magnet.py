@@ -20,12 +20,19 @@ def Plot_dPdH(Data):
 
     if not(ax.lines):
         ax.plot([],[],'b.-')
-        ax.set_xlim([Data['h'].min(), Data['h'].max()])
+        if 'Fixed frequency' in Data['Mode']:
+            ax.set_xlim([Data['h'].min(), Data['h'].max()])
+        else:
+            ax.set_xlim([Data['f'].min()/1E9, Data['f'].max()/1E9])
         ax.set_ylim([-1E-10, 1E-10])
         
     line = ax.lines[-1]
-    line.set_data(Data['h'], Data['dP/dH']*1000)
-    ax.set_xlabel('Field (Oe)')
+    if 'Fixed frequency' in Data['Mode']:
+        line.set_data(Data['h'], Data['dP/dH']*1000)
+        ax.set_xlabel('Field (Oe)')
+    else:
+        line.set_data(Data['f']/1E9, Data['dP/dH']*1000)
+        ax.set_xlabel('Freq (GHz)')
     ax.set_ylabel('dP/dH')
     ax.grid(True)
 
@@ -153,89 +160,231 @@ class VNA_FMR_1P(object):
             self.Data.save(file_name)
         self.FC.TurnOff()
 
-    def PlotdPdH(self, i=None):
-        ss = self.Data_Osc['AC Field'] / self.Data_Osc['oscH']**2
-        Pabs = 1 - numpy.abs(self.Data_Osc['S11'])**2
-        A_Pabs = (Pabs * ss[None,:]).mean(axis=1)
-        
-        if i is not None:
-            self.Data_dPdH['dP/dH'][i] = A_Pabs[i]
-        else:
-            self.Data_dPdH['dP/dH'] = A_Pabs
-        Plot_dPdH(self.Data_dPdH)
-
-
     @ThD.as_thread
-    def Measure_dPdH(self, H_start, H_stop, H_steps, freq, file_name, 
-                     oscH=20, osc_points_per_cicle=4, osc_repetitions=10,
-                     hold_time=0.1, osc_hold_time=0.01, turn_off=False):
-
-        self.VNAC.backup_sweep()
-        self.VNAC.VNA.Ch1.SetSweep(start=freq, stop=freq, np=1)
+    def Measure_dPdH(self, fields, freq, file_name, 
+                     dH=5,  average_factor=10, repetitions=2,
+                     hold_time=0.0, dH_hold_time=0.01):
 
         PowerSource2 = magdynlab.instruments.KEPCO_BOP(ResourceName='GPIB0::6::INSTR')
         FC = magdynlab.controllers.FieldController(PowerSource2)
         FC.Kepco.Voltage = 15
 
-        self.FC.setField(H_stop)
-        self.FC.setField(H_stop)
+        Data = self.Data_dPdH
+        Data['Mode'] = 'Fixed frequency'
+
+        self.VNAC.backup_sweep()
+        self.VNAC.VNA.Ch1.SetSweep(start=freq, stop=freq, np=1)
+
+        Data['h'] = fields
+        Data['f'] = freq
+        Data['dH'] = dH
+        data_shape = (len(Data['h']), 2, average_factor*repetitions)
+        Data['S11'] = numpy.zeros(data_shape, dtype=complex) + numpy.nan
+        Data['dP/dH'] = numpy.zeros_like(fields) + numpy.nan
+        extra_info = ['',
+                      'Mode : Fixed frequency',
+                      'Frequency : %(f)0.6f GHz' % {'f':freq/1E9},
+                      'Average factor : %(av)d Oe' % {'av':average_factor}, 
+                      'Repetitions : %(rep)d' % {'rep':repetitions},
+                      '']
+        Data.info = self.Info + '\n'.join(extra_info)
+        
+        #make smoot field transitions
+        self.FC.setField(fields[-1])
+        self.FC.setField(fields[-1])
         I_end = self.FC.PowerSource.measured_current
-        self.FC.setField(H_start)
-        self.FC.setField(H_start)
+        self.FC.setField(fields[0])
+        self.FC.setField(fields[0])
         I_start = self.FC.PowerSource.measured_current
 
-        Is_H_dc = numpy.linspace(I_start, I_end, H_steps)
-
-        self.Data_Osc['h'] = numpy.linspace(H_start, H_stop, H_steps)
-        self.Data_Osc['f'] = freq
-        self.Data_Osc['osc_points_per_cicle'] = osc_points_per_cicle
-        self.Data_Osc['osc_repetitions'] = osc_repetitions
-        self.Data_Osc['oscH'] = oscH * 1E-3 #mA
-        oscR = osc_repetitions
-        oscN = osc_repetitions * osc_points_per_cicle
-        ss = numpy.sin(numpy.linspace(0, 2*oscR*numpy.pi, oscN))
-        self.Data_Osc['AC Field'] = ss * oscH * 1E-3
-        data_shape = (len(self.Data_Osc['h']), oscN)
-        self.Data_Osc['S11'] = numpy.zeros(data_shape, dtype=complex)
-        self.Data_Osc.info = self.Info
-
-        self.Data_dPdH['h'] = self.Data_Osc['h'].copy()
-        self.Data_dPdH['f'] = freq
-        self.Data_dPdH['dP/dH'] = numpy.zeros_like(Is_H_dc) + numpy.nan
-        extra_info = ['',
-                      'Frequency : %(f)0.6f GHz' % {'f':freq/1E9},
-                      'Osc Field : %(oscH)0.1f Oe' % {'oscH':oscH}, 
-                      'OscPoints : %(oscP)d' % {'oscP':osc_points_per_cicle},
-                      'OscReps :%(oscR)d' % {'oscR':osc_repetitions},
-                      '']
-        self.Data_dPdH.info = self.Info + '\n'.join(extra_info)
+        Is_H_dc = numpy.linspace(I_start, I_end, len(fields))
 
         # Loop for each DC field
         for hi, I_H_dc in enumerate(Is_H_dc):
             self.FC.PowerSource.setpoint = I_H_dc
             self.FC.PowerSource.WaitRamp()
             time.sleep(hold_time)
-            self.Data_Osc['h'][hi] = self.FC.getField()
-            self.Data_dPdH['h'][hi] = self.Data_Osc['h'][hi]
 
-            # Loop for each AC field
-            for ci, I_H_ac in enumerate(self.Data_Osc['AC Field']): #currents
-                PowerSource2.current = I_H_ac
-                time.sleep(osc_hold_time)
-                self.Data_Osc['S11'][hi,ci] = self.VNAC.getSData(0, True)
+            i_pos = dH*1E-3
+            i_neg = -dH*1E-3
+
+            for r_i in range(repetitions):
+                FC.Kepco.current = i_pos
+                time.sleep(dH_hold_time)
+                for av_i in range(average_factor):
+                    n_i = r_i*average_factor + av_i
+                    Data['S11'][hi,0,n_i] = self.VNAC.getSData(0, True)
+                FC.Kepco.current = i_neg
+                time.sleep(dH_hold_time)
+                for av_i in range(average_factor):
+                    n_i = r_i*average_factor + av_i
+                    Data['S11'][hi,1,n_i] = self.VNAC.getSData(0, True)
                 ThD.check_stop()
+                
+                PAbs_hi = 1 - numpy.abs(Data['S11'][hi])**2
+                P_pos = numpy.nanmean(PAbs_hi[0,:])
+                P_neg = numpy.nanmean(PAbs_hi[1,:])
+                Data['dP/dH'][hi] = (P_pos - P_neg)/(2*dH)
+                Plot_dPdH(Data)
+                
             ThD.check_stop()
-            self.PlotdPdH(hi)
+        FC.Kepco.current = 0
 
         if file_name is not None:
-            self.Data_Osc.save(file_name)
-            self.Data_dPdH.savetxt(file_name + '.dPxH', keys=['h', 'dP/dH'])
+            Data.save(file_name)
+            Data.savetxt(file_name + '.dPxH', keys=['h', 'dP/dH'])
 
         self.VNAC.restore_sweep()
-        if turn_off:
-            self.FC.TurnOff()
-        FC.TurnOff()
-        PowerSource2.BEEP()
+        FC.Kepco.BEEP()
+        #self.FC.TurnOff()
+        #self.FC.Kepco.BEEP()
+
+    @ThD.as_thread
+    def Measure_dPdH_freq(self, field, file_name, dH_source='Solenoid',
+                          dH=2, average_factor=20, repetitions=20,
+                          hold_time=0.0, dH_hold_time=0.01):
+                          
+        PowerSource2 = magdynlab.instruments.KEPCO_BOP(ResourceName='GPIB0::6::INSTR')
+        FC = magdynlab.controllers.FieldController(PowerSource2)
+        FC.Kepco.Voltage = 15
+
+        Data = self.Data_dPdH
+        Data['Mode'] = 'Fixed field ' + dH_source
+
+        Data['h'] = field
+        Data['f'] = self.VNAC.frequencies
+        Data['dH'] = numpy.atleast_1d(dH)
+        data_shape = (len(Data['f']), 2, average_factor*repetitions)
+        Data['S11'] = numpy.zeros(data_shape, dtype=complex) + numpy.nan
+
+        Data['dP/dH'] = numpy.zeros_like(Data['f']) + numpy.nan
+        extra_info = ['',
+                      'Mode : Fixed field %s' % dH_source,
+                      'Field : %0.2f Oe' % field,
+                      'Freq : %0.2f - %0.2f GHz'  % (Data['f'].min()/1E9, Data['f'].max()/1E9),
+                      'dH : %s' % dH,
+                      'Average factor : %d' % average_factor,
+                      'Repetitions : %d' % repetitions,
+                      '']
+        Data.info = self.Info + '\n'.join(extra_info)
+
+        print('*** Measuring dP/dH fixed field***')
+        print('\n'.join(extra_info))
+
+        self.FC.setField(field)
+        if len(Data['dH']) == 1:
+            Data['dH'] = [dH, -dH]
+            i_pos = Data['dH'][0]*1E-3
+            i_neg = Data['dH'][-1]*1E-3
+
+        for r_i in range(repetitions):
+            if dH_source is 'Solenoid':
+                FC.Kepco.current = i_pos
+            elif dH_source is 'Auxiliar':
+                self.VNAC.VNA.auxiliar_voltage_output1 = Data['dH'][0]
+            time.sleep(dH_hold_time)
+            for av_i in range(average_factor):
+                n_i = r_i*average_factor + av_i
+                Data['S11'][:,0,n_i] = self.VNAC.getSData(0, True)
+
+            if dH_source is 'Solenoid':
+                FC.Kepco.current = i_neg
+            elif dH_source is 'Auxiliar':
+                self.VNAC.VNA.auxiliar_voltage_output1 = Data['dH'][-1]
+            time.sleep(dH_hold_time)
+            for av_i in range(average_factor):
+                n_i = r_i*average_factor + av_i
+                Data['S11'][:,1,n_i] = self.VNAC.getSData(0, True)
+            ThD.check_stop()
+
+            PAbs = 1 - numpy.abs(Data['S11'])**2
+            P_pos = numpy.nanmean(PAbs[:,0,:], axis=-1)
+            P_neg = numpy.nanmean(PAbs[:,1,:], axis=-1)
+            Data['dP/dH'] = (P_pos - P_neg)/((Data['dH'][0]-Data['dH'][-1]))
+            Plot_dPdH(Data)
+        FC.Kepco.current = 0
+        ThD.check_stop()
+        print('Done!')
+        
+        if dH_source is 'Solenoid':
+            FC.Kepco.current = 0
+        elif dH_source is 'Auxiliar':
+            self.VNAC.VNA.auxiliar_voltage_output1 = 0
+
+        if file_name is not None:
+            Data.save(file_name)
+            Data.savetxt(file_name + '.dPxf', keys=['f', 'dP/dH'])
+
+    @ThD.as_thread
+    def Improve_dPdH_freq(self, file_name=None,
+                          average_factor=20, repetitions=1,
+                          hold_time=0.0, dH_hold_time=0.01):
+
+        PowerSource2 = magdynlab.instruments.KEPCO_BOP(ResourceName='GPIB0::6::INSTR')
+        FC = magdynlab.controllers.FieldController(PowerSource2)
+        FC.Kepco.Voltage = 15
+
+        Data = self.Data_dPdH
+        if 'Solenoid' in Data['Mode']:
+            dH_source = 'Solenoid'
+        elif 'Auxiliar' in Data['Mode']:
+            dH_source = 'Auxiliar'
+
+        dH  = Data['dH']
+
+        data_shape = (len(Data['f']), 2, average_factor*repetitions)
+        extraS11 = numpy.zeros(data_shape, dtype=complex) + numpy.nan
+        offset = Data['S11'].shape[2]-1
+        Data['S11'] = numpy.dstack((Data['S11'], extraS11))
+
+        extra_info = ['Extra Average factor : %d' % average_factor,
+                      'Extra Repetitions : %d' % repetitions,
+                      '']
+        Data.info = self.Info + '\n'.join(extra_info)
+
+        print('*** Improving dP/dH fixed field***')
+        print('\n'.join(extra_info))
+
+        i_pos = Data['dH'][0]*1E-3
+        i_neg = Data['dH'][-1]*1E-3
+
+        for r_i in range(repetitions):
+            if dH_source is 'Solenoid':
+                FC.Kepco.current = i_pos
+            elif dH_source is 'Auxiliar':
+                self.VNAC.VNA.auxiliar_voltage_output1 = Data['dH'][0]
+            time.sleep(dH_hold_time)
+            for av_i in range(average_factor):
+                n_i = r_i*average_factor + av_i + offset
+                Data['S11'][:,0,n_i] = self.VNAC.getSData(0, True)
+
+            if dH_source is 'Solenoid':
+                FC.Kepco.current = i_neg
+            elif dH_source is 'Auxiliar':
+                self.VNAC.VNA.auxiliar_voltage_output1 = Data['dH'][-1]
+            time.sleep(dH_hold_time)
+            for av_i in range(average_factor):
+                n_i = r_i*average_factor + av_i + offset
+                Data['S11'][:,1,n_i] = self.VNAC.getSData(0, True)
+            ThD.check_stop()
+            
+            PAbs = 1 - numpy.abs(Data['S11'])**2
+            P_pos = numpy.nanmean(PAbs[:,0,:], axis=-1)
+            P_neg = numpy.nanmean(PAbs[:,1,:], axis=-1)
+            Data['dP/dH'] = (P_pos - P_neg)/((Data['dH'][0]-Data['dH'][-1]))
+            Plot_dPdH(Data)
+        ThD.check_stop()
+        print('Done!')
+        
+        if dH_source is 'Solenoid':
+            FC.Kepco.current = 0
+        elif dH_source is 'Auxiliar':
+            self.VNAC.VNA.auxiliar_voltage_output1 = 0
+
+        if file_name is not None:
+            Data.save(file_name)
+            Data.savetxt(file_name + '.dPxf', keys=['f', 'dP/dH'])
+
 
     def Stop(self, TurnOff=True):
         print('Stoping...')

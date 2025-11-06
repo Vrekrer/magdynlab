@@ -193,52 +193,58 @@ class VNA_FMR_1P(object):
 
     @ThD.as_thread
     def Measure_dPdH(self, fields, freq, file_name, 
-                     oscH=5, osc_points_per_cicle=4, osc_repetitions=10,
-                     hold_time=0.0, osc_hold_time=0.01):
+                     dH=0.5,  average_factor=10, repetitions=1
+                     hold_time=0.0, dH_hold_time=0.01):
+
 
         self.VNAC.backup_sweep()
         self.VNAC.VNA.Ch1.SetSweep(start=freq, stop=freq, np=1)
 
-        self.Data_Osc['h'] = fields
-        self.Data_Osc['f'] = freq
-        self.Data_Osc['osc_points_per_cicle'] = osc_points_per_cicle
-        self.Data_Osc['osc_repetitions'] = osc_repetitions
-        self.Data_Osc['oscH'] = oscH
-        oscR = osc_repetitions
-        oscN = osc_repetitions * osc_points_per_cicle
-        ss = numpy.sin(numpy.linspace(0, 2*oscR*numpy.pi, oscN))
-        self.Data_Osc['AC Field'] = ss * oscH
-        data_shape = (len(self.Data_Osc['h']), oscN)
-        self.Data_Osc['S11'] = numpy.zeros(data_shape, dtype=complex)
-        self.Data_Osc.info = self.Info
+        Data = self.Data_dPdH
+        Data['Mode'] = 'Fixed frequency'
 
-        self.Data_dPdH['h'] = fields
-        self.Data_dPdH['f'] = freq
-        self.Data_dPdH['dP/dH'] = numpy.zeros_like(fields) + numpy.nan
+        self.VNAC.backup_sweep()
+        self.VNAC.VNA.Ch1.SetSweep(start=freq, stop=freq, np=1)
+
+        Data['h'] = fields
+        Data['f'] = freq
+        Data['dH'] = dH
+        data_shape = (len(Data['h']), 2, average_factor*repetitions)
+        Data['S11'] = numpy.zeros(data_shape, dtype=complex) + numpy.nan
+        Data['dP/dH'] = numpy.zeros_like(fields) + numpy.nan
         extra_info = ['',
+                      'Mode : Fixed frequency',
                       'Frequency : %(f)0.6f GHz' % {'f':freq/1E9},
-                      'Osc Field : %(oscH)0.1f Oe' % {'oscH':oscH}, 
-                      'OscPoints : %(oscP)d' % {'oscP':osc_points_per_cicle},
-                      'OscReps :%(oscR)d' % {'oscR':osc_repetitions},
+                      'Average factor : %(av)d Oe' % {'av':average_factor}, 
+                      'Repetitions : %(rep)d' % {'rep':repetitions},
                       '']
-        self.Data_dPdH.info = self.Info + '\n'.join(extra_info)
+        Data.info = self.Info + '\n'.join(extra_info)
 
         # Loop for each DC field
         for hi, h in enumerate(fields):
             self.FC.setField(h)
             time.sleep(hold_time)
 
-            i0 = self.FC.Kepco.current
-            cs = i0 + self.Data_Osc['AC Field']/self.FC.HperOut
-
-            # Loop for each AC field
-            for ci, c in enumerate(cs):
-                self.FC.Kepco.current = c
-                time.sleep(osc_hold_time)
-                self.Data_Osc['S11'][hi,ci] = self.VNAC.getSData(0, True)
+            for r_i in range(repetitions-1):
+                self.FC.setField = h + Data['dH']
+                time.sleep(dH_hold_time)
+                for av_i in range(average_factor-1):
+                    n_i = r_i*average_factor + av_i
+                    Data['S11'][hi,0,n_i] = self.VNAC.getSData(0, True)
+                self.FC.setField = h - Data['dH']
+                time.sleep(dH_hold_time)
+                for av_i in range(average_factor):
+                    n_i = r_i*average_factor + av_i
+                    Data['S11'][hi,1,n_i] = self.VNAC.getSData(0, True)
                 ThD.check_stop()
+                
+                PAbs_hi = 1 - numpy.abs(Data['S11'][hi])**2
+                P_pos = numpy.nanmean(PAbs_hi[0,:])
+                P_neg = numpy.nanmean(PAbs_hi[1,:])
+                Data['dP/dH'][hi] = (P_pos - P_neg)/(2*Data['dH'])
+                Plot_dPdH(Data)
+                
             ThD.check_stop()
-            self.PlotdPdH(hi)
 
         if file_name is not None:
             self.Data_Osc.save(file_name)

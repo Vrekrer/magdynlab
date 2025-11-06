@@ -23,6 +23,8 @@ class KEYSIGHT_B1500A(_InstrumentBase):
                  ResourceName=None, logFile=None):
         if ResourceName is None:
             ResourceName = 'TCPIP0::%s::5025::SOCKET' % IP
+        # be sure to acces "Keysight EasyEXPERT" using the socket 
+        # and not "B1500A" using "agb1500a::INSTR"
         super().__init__(ResourceName, logFile)
         self._IDN = 'KEYSIGHT B1500A'
         self.VI.write_termination = self.VI.LF
@@ -61,13 +63,17 @@ class KEYSIGHT_B1500A(_InstrumentBase):
         data = rawList.pop(0)
         while 'AutoAnalysis.Marker.Data.StartCondition' not in data:
             data = rawList.pop(0)
-        self.headers = numpy.array(rawList.pop(0).split(','))
-        raw_result = numpy.array([numpy.fromstring(line, sep=',')
-                                   for line in rawList])
-        result = {}
-        for i, key in enumerate(self.headers):
-            result[key] = raw_result[:, i]
-        return result
+        headers = rawList.pop(0).split(',')
+        values = numpy.array([v.split(',') for v in rawList], dtype=float)
+        return dict(zip(headers, values.T))
+        #OLD CODE
+        #data = rawList.pop(0)
+        #while 'AutoAnalysis.Marker.Data.StartCondition' not in data:
+        #    data = rawList.pop(0)
+        #self.headers = [data.split('\t')[0] for data in rawList]
+        #values = numpy.array([data.split('\t')[2:] for data in rawList], 
+        #                     dtype=float)
+        #return dict(zip(self.headers, values))
 
     def getResultDictionary(self, new=False, delete=False):
         if new:

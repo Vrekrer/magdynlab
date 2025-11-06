@@ -67,3 +67,18 @@ class LockIn_Controller(object):
                 vIn = vsIn.mean()
                 sigma = vsIn.std()
         return numpy.array([vIn, sigma])
+        
+    def getXY(self,
+             n=20, iniDelay=1, measDelay=0):
+        vsX = numpy.zeros(n)
+        vsY = numpy.zeros(n)
+        time.sleep(iniDelay)
+        for i in range(n):
+            time.sleep(measDelay)
+            vsX[i] = self.LockIn.X
+            vsY[i] = self.LockIn.Y
+        vX = vsX.mean()
+        sigmaX = vsX.std()
+        vY = vsX.mean()
+        sigmaY = vsY.std()
+        return numpy.array([vX, sigmaX, vY, sigmaY])

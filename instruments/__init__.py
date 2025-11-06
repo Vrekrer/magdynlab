@@ -15,6 +15,8 @@ from .lakeshore_643 import *
 from .keithley_195A import *
 from .keithley_2000 import *
 from .keithley_2400 import *
+from .keysight_34420A import *
+from .keysight_34461A import *
 from .keysight_E4990A import *
 from .keysight_B1500 import *
 from .keysight_86100 import *

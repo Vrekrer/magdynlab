@@ -77,7 +77,7 @@ class RxH(object):
 
     @ThD.as_thread
     def Measure(self, crv, file_name=None):
-        fields = crv
+        fields = numpy.atleast_1d(crv)
         self.Data['h'] = fields
         self.Data['R'] = numpy.zeros_like(fields) + numpy.nan
         self.Data.info = self.Info

@@ -46,7 +46,7 @@ class VNA_Controller(object):
         if not '1' in areas:
             self.VNA.write('DISP:WIND1:STAT ON')
         for area in areas:
-            if area is not '1':
+            if area != '1':
                 self.VNA.write('DISP:WIND%s:STAT OFF' % area)
         self.VNA.write('CALC1:PAR:DEL:ALL')
 
